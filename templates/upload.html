@@ -1,0 +1,762 @@
+{% extends "base.html" %}
+{% block title %}Assistant de traitement — TaxStats AI{% endblock %}
+{% block search_placeholder %}Rechercher...{% endblock %}
+
+{% block extra_css %}
+.upload-zone { border: 2px dashed #c4c5d5; transition: border-color .2s, background .2s, transform .15s; }
+.upload-zone:hover, .upload-zone.dragover { border-color: #1e40af; background: rgba(30,64,175,.04); transform: translateY(-1px); }
+.wizard-step { position: relative; padding-left: 2.75rem; padding-bottom: 1.25rem; }
+.wizard-step:last-child { padding-bottom: 0; }
+.wizard-step::before { content: ''; position: absolute; left: 1.06rem; top: 2.1rem; bottom: 0; width: 2px; background: #e5e7eb; }
+.wizard-step:last-child::before { display: none; }
+.wizard-dot { position: absolute; left: 0; top: 0; width: 2.125rem; height: 2.125rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 700; border: 2px solid #e5e7eb; background: #fff; color: #757684; }
+.wizard-step.active .wizard-dot { border-color: #1e40af; background: #1e40af; color: #fff; box-shadow: 0 0 0 4px rgba(30,64,175,.12); }
+.wizard-step.done .wizard-dot { border-color: #059669; background: #059669; color: #fff; }
+.wizard-step.done .wizard-dot span { font-size: 1rem; }
+.kpi-rate-high { color: #166534; font-weight: 700; }
+.kpi-rate-mid { color: #1e40af; font-weight: 600; }
+.kpi-rate-low { color: #991b1b; font-weight: 700; }
+.log-line { border-left: 3px solid #e5e7eb; padding-left: .75rem; }
+.log-line.error { border-color: #ba1a1a; }
+.wizard-progress { height: 4px; background: #e5e7eb; border-radius: 9999px; overflow: hidden; }
+.wizard-progress > span { display: block; height: 100%; background: linear-gradient(90deg, #1e40af, #059669); transition: width .35s ease; }
+.processing-overlay { position: fixed; inset: 0; background: rgba(255,255,255,.72); backdrop-filter: blur(2px); z-index: 100; display: none; align-items: center; justify-content: center; }
+.processing-overlay.active { display: flex; }
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+
+  <div class="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+    <div>
+      <p class="text-[10px] uppercase font-bold tracking-widest text-primary-container">Assistant de traitement</p>
+      <h1 class="text-2xl font-bold text-on-surface mt-1">
+        {% if treatment %}{{ treatment.name }}{% else %}Nouveau traitement fiscal{% endif %}
+      </h1>
+      {% if treatment %}
+      <p class="text-sm text-outline mt-1">Période {{ treatment.period }} · {{ treatment.user }} · démarré {{ treatment.started_at.strftime('%d/%m/%Y %H:%M') if treatment.started_at else '—' }}</p>
+      {% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('import_restart') }}">
+      <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-outline border border-outline-variant/60 rounded-xl hover:bg-white transition-colors">
+        <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+        Nouveau traitement
+      </button>
+    </form>
+  </div>
+
+  <div class="mb-6">
+    <div class="flex items-center justify-between text-xs text-outline mb-2">
+      <span>Étape {{ wizard_step }} / {{ wizard_steps|length }}</span>
+      <span>{{ ((wizard_step / wizard_steps|length) * 100)|round|int }} %</span>
+    </div>
+    <div class="wizard-progress"><span style="width: {{ ((wizard_step / wizard_steps|length) * 100)|round|int }}%;"></span></div>
+  </div>
+
+  <div class="grid lg:grid-cols-[280px_1fr] gap-8 items-start">
+
+    <aside class="bg-white rounded-2xl border border-outline-variant/50 card-shadow p-6 lg:sticky lg:top-6">
+      <p class="text-[10px] uppercase font-bold text-on-surface-variant mb-5">Étapes</p>
+      {% for step in wizard_steps %}
+      <div class="wizard-step {% if wizard_step == step.num %}active{% elif wizard_step > step.num %}done{% endif %}">
+        <div class="wizard-dot">
+          {% if wizard_step > step.num %}
+          <span class="material-symbols-outlined">check</span>
+          {% else %}{{ step.num }}{% endif %}
+        </div>
+        {% if treatment and step.num < wizard_step %}
+        <form method="POST" action="{{ url_for('import_goto_step', step_num=step.num) }}" class="inline">
+          <button type="submit" class="text-left w-full group">
+            <p class="text-sm font-semibold text-on-surface leading-tight group-hover:text-primary-container">{{ step.title }}</p>
+            <p class="text-xs text-outline mt-0.5">{{ step.subtitle }}</p>
+          </button>
+        </form>
+        {% else %}
+        <p class="text-sm font-semibold text-on-surface leading-tight">{{ step.title }}</p>
+        <p class="text-xs text-outline mt-0.5">{{ step.subtitle }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </aside>
+
+    <main class="bg-white rounded-2xl border border-outline-variant/50 card-shadow overflow-hidden min-h-[480px]">
+
+      {# ── Étape 1 : Paramètres ── #}
+      {% if wizard_step == 1 %}
+      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30">
+        <h2 class="text-xl font-bold text-on-surface">Créer un traitement</h2>
+        <p class="text-sm text-outline mt-2">Définissez la période fiscale et le nom du traitement. Les données précédentes seront réinitialisées.</p>
+      </div>
+      <div class="p-8 max-w-lg">
+        <form method="POST" action="{{ url_for('import_create_treatment') }}" class="space-y-5">
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Nom du traitement</label>
+            <input type="text" name="name" placeholder="Ex. Mi-parcours T1 2026" class="w-full rounded-xl border-outline-variant/60 text-sm" value="{{ treatment.name if treatment else '' }}"/>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Période</label>
+            <input type="text" name="period" placeholder="Ex. 2026" class="w-full rounded-xl border-outline-variant/60 text-sm" value="{{ treatment.period if treatment else '' }}"/>
+          </div>
+          <button type="submit" class="w-full py-3.5 bg-primary-container text-white rounded-xl font-bold hover:opacity-90 transition-opacity inline-flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[20px]">play_arrow</span>
+            Démarrer le traitement
+          </button>
+        </form>
+      </div>
+
+      {# ── Étape 2 : Fichiers déclaratifs ── #}
+      {% elif wizard_step == 2 %}
+      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30">
+        <h2 class="text-xl font-bold text-on-surface">Import des déclarations</h2>
+        <p class="text-sm text-outline mt-2">Importez un ou plusieurs fichiers sectoriels, puis lancez la consolidation.</p>
+      </div>
+      <div class="p-8">
+        <form method="POST" enctype="multipart/form-data" id="upload-form-p1">
+          <input type="hidden" name="phase" value="1"/>
+          <input type="file" name="files" id="file-input-p1" accept=".xlsx,.xls,.csv" multiple class="hidden"/>
+          <div class="upload-zone rounded-xl py-12 px-6 text-center cursor-pointer" id="drop-zone-p1">
+            <span class="material-symbols-outlined text-[48px] text-primary-container/70 mb-3">cloud_upload</span>
+            <p class="font-semibold text-on-surface">Glisser-déposer ou parcourir</p>
+            <p class="text-xs text-outline mt-1">Fichiers Excel sectoriels · colonnes NIU, montant, date de création, montant reçu</p>
+          </div>
+        </form>
+
+        {% if pendings_phase1 %}
+        <div class="mt-8 rounded-xl border border-outline-variant/40 overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-surface-container-low text-[10px] uppercase text-on-surface-variant">
+              <tr>
+                <th class="px-5 py-3 text-left font-semibold">Fichier</th>
+                <th class="px-5 py-3 text-left font-semibold">Type</th>
+                <th class="px-5 py-3 text-right font-semibold">Lignes</th>
+                <th class="px-5 py-3 w-10"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant/20">
+              {% for p in pendings_phase1 %}
+              <tr class="hover:bg-surface-container-low/30">
+                <td class="px-5 py-3 font-medium">{{ p.filename }}</td>
+                <td class="px-5 py-3 text-outline capitalize">{{ p.file_type or '—' }}</td>
+                <td class="px-5 py-3 text-right font-mono-data">{{ '{:,}'.format(p.nb_rows or 0).replace(',', ' ') }}</td>
+                <td class="px-5 py-3 text-right">
+                  <a href="{{ url_for('delete_pending', pending_id=p.id) }}" class="text-outline hover:text-error"><span class="material-symbols-outlined text-[18px]">close</span></a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% set total_p1 = pendings_phase1|sum(attribute='nb_rows') %}
+        <form method="POST" action="{{ url_for('process_phase1') }}" class="mt-8">
+          <button type="submit" class="w-full py-3.5 bg-primary-container text-white rounded-xl font-bold hover:opacity-90">
+            Lancer la consolidation
+            <span class="block text-xs font-normal opacity-90 mt-1">{{ '{:,}'.format(total_p1 or 0).replace(',', ' ') }} ligne(s) · TCD par fichier puis fusion</span>
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+      {# ── Étape 3 : Consolidation ── #}
+      {% elif wizard_step == 3 %}
+      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-on-surface">Consolidation TCD</h2>
+          <p class="text-sm text-outline mt-2">Fusion des TCD · dédoublonnage par NIU · fichier sans colonne État disponible.</p>
+          {% if consolidation_meta %}
+          <p class="text-xs text-outline mt-2 font-mono-data">
+            Dernier calcul : {{ consolidation_meta.nb_fichiers }} fichier(s) · {{ consolidation_meta.nb_contribuables }} contribuable(s) dans le consolidé
+          </p>
+          {% endif %}
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a href="{{ url_for('download_consolide') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-container text-white rounded-xl text-sm font-bold hover:opacity-90">
+            <span class="material-symbols-outlined text-[18px]">download</span> Consolidé complet
+          </a>
+          <a href="{{ url_for('download_consolide_sans_etat') }}" class="inline-flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-xl text-sm font-semibold hover:bg-surface-container-low">
+            <span class="material-symbols-outlined text-[18px]">table_chart</span> TCD sans État
+          </a>
+        </div>
+      </div>
+      <div class="p-8">
+        {% if preview_rows %}
+        <div class="rounded-xl border border-outline-variant/40 overflow-hidden mb-8">
+          <div class="overflow-x-auto max-h-[320px] custom-scrollbar">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-surface-container-low text-[10px] uppercase text-on-surface-variant">
+                <tr>
+                  <th class="px-5 py-3 text-left font-semibold">NIU</th>
+                  <th class="px-5 py-3 text-left font-semibold">Raison sociale</th>
+                  <th class="px-5 py-3 text-left font-semibold">État</th>
+                  <th class="px-5 py-3 text-right font-semibold">Montant à payer</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20">
+                {% for row in preview_rows %}
+                <tr>
+                  <td class="px-5 py-2 font-mono-data text-xs">{{ row['NIU'] }}</td>
+                  <td class="px-5 py-2">{{ row['Nom/Raison sociale'] }}</td>
+                  <td class="px-5 py-2 text-outline">{{ row['Etat'] or '—' }}</td>
+                  <td class="px-5 py-2 text-right font-mono-data">{{ '{:,.0f}'.format(row['Montant à payer']).replace(',', ' ') }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% if consolidated_count > preview_rows|length %}
+          <p class="px-5 py-2 text-xs text-outline bg-surface-container-low/50">Aperçu {{ preview_rows|length }} / {{ consolidated_count }}</p>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('import_continue') }}">
+          <button type="submit" class="w-full py-3.5 bg-primary-container text-white rounded-xl font-bold hover:opacity-90">
+            Continuer — Fichier en ligne (RECHERCHEV)
+          </button>
+        </form>
+      </div>
+
+      {# ── Étape 4 : Fichier en ligne ── #}
+      {% elif wizard_step == 4 %}
+      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30">
+        <h2 class="text-xl font-bold text-on-surface">Fichier en ligne</h2>
+          <p class="text-sm text-outline mt-2">Importez le fichier des contribuables attendus. Comparaison automatique (RECHERCHEV) → colonne <strong>Statut</strong> ajoutée (#N/A ou montant consolidé).</p>
+      </div>
+      <div class="p-8">
+        <form method="POST" enctype="multipart/form-data" id="upload-form-p2">
+          <input type="hidden" name="phase" value="2"/>
+          <input type="file" name="files" id="file-input-p2" accept=".xlsx,.xls,.csv" multiple class="hidden"/>
+          <div class="upload-zone rounded-xl py-12 px-6 text-center cursor-pointer" id="drop-zone-p2">
+            <span class="material-symbols-outlined text-[48px] text-primary-container/70 mb-3">upload_file</span>
+            <p class="font-semibold text-on-surface">Importer le fichier en ligne</p>
+            <p class="text-xs text-outline mt-1">NIU obligatoire · secteur ou CFLP recommandés (montant optionnel — la RECHERCHEV utilise le consolidé)</p>
+          </div>
+        </form>
+
+        {% if pendings_phase2 %}
+        <div class="mt-8 rounded-xl border border-outline-variant/40 overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-surface-container-low text-[10px] uppercase text-on-surface-variant">
+              <tr>
+                <th class="px-5 py-3 text-left">Fichier</th>
+                <th class="px-5 py-3 text-right">Lignes</th>
+                <th class="px-5 py-3 w-10"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant/20">
+              {% for p in pendings_phase2 %}
+              <tr>
+                <td class="px-5 py-3 font-medium">{{ p.filename }}</td>
+                <td class="px-5 py-3 text-right font-mono-data">{{ '{:,}'.format(p.nb_rows or 0).replace(',', ' ') }}</td>
+                <td class="px-5 py-3 text-right"><a href="{{ url_for('delete_pending', pending_id=p.id) }}" class="text-outline hover:text-error"><span class="material-symbols-outlined text-[18px]">close</span></a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <form method="POST" action="{{ url_for('process_phase2') }}" class="mt-8">
+          <button type="submit" class="w-full py-3.5 bg-primary-container text-white rounded-xl font-bold hover:opacity-90">
+            Lancer la comparaison RECHERCHEV
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+      {# ── Étape 5 : Table secteurs (RECHERCHEV Secteur CIME) ── #}
+      {% elif wizard_step == 5 %}
+      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-on-surface">Fichier secteurs — Secteur CIME</h2>
+          <p class="text-sm text-outline mt-2">RECHERCHEV sur le fichier en ligne (Statut + Secteur) → colonne <strong>Sous secteur</strong> via le fichier secteurs (NIU + Secteur CIME + Sous secteur).</p>
+          {% if phase2_complete and global_stats %}
+          <p class="text-xs text-outline mt-2 font-mono-data">
+            Comparaison : {{ global_stats.total }} NIU · {{ global_stats.declarants }} décl. · {{ global_stats.neants }} néant · {{ global_stats.defaillants }} défaill.
+          </p>
+          {% endif %}
+        </div>
+        {% if phase2_complete %}
+        <a href="{{ url_for('download_comparaison') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-container text-white rounded-xl text-sm font-bold hover:opacity-90 shrink-0">
+          <span class="material-symbols-outlined text-[18px]">download</span> Fichier en ligne + Statut (.xlsx)
+        </a>
+        {% endif %}
+      </div>
+      <div class="p-8">
+        <form method="POST" enctype="multipart/form-data" id="upload-form-p3">
+          <input type="hidden" name="phase" value="3"/>
+          <input type="file" name="files" id="file-input-p3" accept=".xlsx,.xls,.csv" multiple class="hidden"/>
+          <div class="upload-zone rounded-xl py-12 px-6 text-center cursor-pointer" id="drop-zone-p3">
+            <span class="material-symbols-outlined text-[48px] text-primary-container/70 mb-3">category</span>
+            <p class="font-semibold text-on-surface">Importer le fichier secteurs</p>
+            <p class="text-xs text-outline mt-1">Colonnes : NIU · Secteur CIME · Sous secteur</p>
+          </div>
+        </form>
+
+        {% if pendings_phase3 %}
+        <div class="mt-6 text-sm">
+          {% for p in pendings_phase3 %}
+          <div class="flex justify-between py-2 border-b border-outline-variant/20">
+            <span>{{ p.filename }}</span>
+            <span class="font-mono-data text-outline">{{ '{:,}'.format(p.nb_rows or 0).replace(',', ' ') }} lignes</span>
+          </div>
+          {% endfor %}
+        </div>
+        <form method="POST" action="{{ url_for('process_phase3') }}" class="mt-6">
+          <button type="submit" class="w-full py-3.5 bg-primary-container text-white rounded-xl font-bold hover:opacity-90">Associer les secteurs</button>
+        </form>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('import_skip_sectors') }}" class="mt-4">
+          <button type="submit" class="w-full py-3 border border-outline-variant rounded-xl text-sm font-semibold text-outline hover:bg-surface-container-low">
+            Ignorer — Secteur CIME déjà associé
+          </button>
+        </form>
+      </div>
+
+      {# ── Étape 6 : Chiffre d'affaires (optionnel) ── #}
+      {% elif wizard_step == 6 %}
+      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-on-surface">Chiffre d'affaires par sous-secteur</h2>
+            <p class="text-sm text-outline mt-2">
+              Import du fichier CA → colonne <strong>Total CA</strong>
+              (CA_TAXABLE + CA_EXPORT + CA_EXONERE) → <strong>TCD</strong> (NIU en lignes, Total CA en valeurs)
+              → RECHERCHEV sur le fichier en ligne → sous-secteur → agrégation.
+            </p>
+            {% if treatment %}
+            <p class="text-xs text-outline mt-2">
+              Année en cours : <strong>{{ treatment_period_year or treatment.period or '—' }}</strong>
+              {% if treatment_period_year %} · année précédente : <strong>{{ treatment_period_year - 1 }}</strong>{% endif %}
+            </p>
+            {% endif %}
+          </div>
+          {% if ca_complete and ca_info %}
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800">
+            <span class="material-symbols-outlined text-[16px]">check_circle</span> CA calculé
+          </span>
+          <a href="{{ url_for('download_consolide_ca') }}" class="inline-flex items-center gap-2 px-4 py-2 border border-orange-300 rounded-xl text-sm font-semibold text-orange-800 hover:bg-orange-50 shrink-0">
+            <span class="material-symbols-outlined text-[18px]">download</span> Fichier en ligne + CA
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="p-8 space-y-8">
+
+        {# Import CA année en cours #}
+        <div>
+          <p class="text-[10px] uppercase font-bold text-on-surface-variant mb-3">
+            Fichier CA {{ treatment_period_year or 'N' }} (obligatoire)
+          </p>
+          <form method="POST" enctype="multipart/form-data" id="upload-form-p4-current">
+            <input type="hidden" name="phase" value="4"/>
+            <input type="hidden" name="ca_slot" value="current"/>
+            <input type="file" name="files" id="file-input-p4-current" accept=".xlsx,.xls,.csv" multiple class="hidden"/>
+            <div class="upload-zone rounded-xl py-10 px-6 text-center cursor-pointer" id="drop-zone-p4-current">
+              <span class="material-symbols-outlined text-[44px] text-orange-600/70 mb-3">payments</span>
+              <p class="font-semibold text-on-surface">Importer le fichier CA (année en cours)</p>
+              <p class="text-xs text-outline mt-1">NIU · CA_TAXABLE · CA_EXPORT · CA_EXONERE</p>
+            </div>
+          </form>
+          {% if pendings_ca_current %}
+          <div class="mt-4 rounded-xl border border-outline-variant/40 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-surface-container-low text-[10px] uppercase text-on-surface-variant">
+                <tr>
+                  <th class="px-5 py-3 text-left">Fichier</th>
+                  <th class="px-5 py-3 text-right">Lignes</th>
+                  <th class="px-5 py-3 w-10"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20">
+                {% for p in pendings_ca_current %}
+                <tr>
+                  <td class="px-5 py-3 font-medium">{{ p.filename }}</td>
+                  <td class="px-5 py-3 text-right font-mono-data">{{ '{:,}'.format(p.nb_rows or 0).replace(',', ' ') }}</td>
+                  <td class="px-5 py-3 text-right"><a href="{{ url_for('delete_pending', pending_id=p.id) }}" class="text-outline hover:text-error"><span class="material-symbols-outlined text-[18px]">close</span></a></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endif %}
+        </div>
+
+        {# Import CA N-1 (optionnel) #}
+        <div>
+          <p class="text-[10px] uppercase font-bold text-on-surface-variant mb-3">
+            Fichier CA {{ (treatment_period_year - 1) if treatment_period_year else 'N-1' }} (optionnel — comparaison)
+          </p>
+          <form method="POST" enctype="multipart/form-data" id="upload-form-p4-previous">
+            <input type="hidden" name="phase" value="4"/>
+            <input type="hidden" name="ca_slot" value="previous"/>
+            <input type="file" name="files" id="file-input-p4-previous" accept=".xlsx,.xls,.csv" multiple class="hidden"/>
+            <div class="upload-zone rounded-xl py-8 px-6 text-center cursor-pointer border-dashed" id="drop-zone-p4-previous">
+              <span class="material-symbols-outlined text-[36px] text-outline/50 mb-2">history</span>
+              <p class="font-medium text-on-surface-variant">Importer le fichier CA année précédente</p>
+              <p class="text-xs text-outline mt-1">Même structure de colonnes · pour Écart absolu et Évolution</p>
+            </div>
+          </form>
+          {% if pendings_ca_previous %}
+          <div class="mt-4 rounded-xl border border-outline-variant/40 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-surface-container-low text-[10px] uppercase text-on-surface-variant">
+                <tr>
+                  <th class="px-5 py-3 text-left">Fichier</th>
+                  <th class="px-5 py-3 text-right">Lignes</th>
+                  <th class="px-5 py-3 w-10"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20">
+                {% for p in pendings_ca_previous %}
+                <tr>
+                  <td class="px-5 py-3 font-medium">{{ p.filename }}</td>
+                  <td class="px-5 py-3 text-right font-mono-data">{{ '{:,}'.format(p.nb_rows or 0).replace(',', ' ') }}</td>
+                  <td class="px-5 py-3 text-right"><a href="{{ url_for('delete_pending', pending_id=p.id) }}" class="text-outline hover:text-error"><span class="material-symbols-outlined text-[18px]">close</span></a></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if ca_complete and ca_rows and ca_info %}
+        <div class="rounded-xl border border-orange-200 overflow-hidden">
+          <div class="px-5 py-3 bg-orange-50 border-b border-orange-200 flex flex-wrap justify-between gap-2">
+            <div>
+              <p class="text-sm font-bold text-orange-900">Aperçu — CA par sous-secteur</p>
+              {% if ca_info.meta %}
+              <p class="text-xs text-orange-800/80 mt-0.5">
+                {{ ca_info.meta.mapped_count }} NIU mappés · {{ ca_info.meta.excluded_na_count }} #N/A exclus
+              </p>
+              {% endif %}
+            </div>
+            <a href="{{ url_for('download_ca_sous_secteur') }}" class="text-xs font-bold text-orange-800 hover:underline">Tableau sous-secteur</a>
+            <a href="{{ url_for('download_consolide_ca') }}" class="text-xs font-bold text-orange-800 hover:underline">Fichier en ligne + CA</a>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar max-h-[360px]">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-[#c2410c] text-white text-[10px] uppercase">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold">SOUS SECTEUR</th>
+                  <th class="px-4 py-3 text-right font-semibold">{{ ca_info.col_current }}</th>
+                  <th class="px-4 py-3 text-right font-semibold">{{ ca_info.col_previous }}</th>
+                  <th class="px-4 py-3 text-right font-semibold">Ecart absolu</th>
+                  <th class="px-4 py-3 text-right font-semibold">Evolution</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20">
+                {% for row in ca_rows %}
+                <tr class="{% if row['_is_total'] %}bg-orange-50 font-bold{% else %}hover:bg-surface-container-low/30{% endif %}">
+                  <td class="px-4 py-2.5">{{ row['SOUS SECTEUR'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '{:,.0f}'.format(row[ca_info.col_current] or 0).replace(',', ' ') }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '{:,.0f}'.format(row[ca_info.col_previous] or 0).replace(',', ' ') }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">
+                    {% set ecart = (row['Ecart absolu'] or 0) %}
+                    {% if not row['_is_total'] and ecart < 0 %}
+                    <a
+                      href="{{ url_for('ca_sous_secteur_detail', sous_secteur=row['SOUS SECTEUR']) }}"
+                      class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-error-container/35 text-error font-semibold hover:bg-error-container/55 transition-colors"
+                      title="Voir le détail des NIU de ce sous-secteur"
+                    >
+                      <span>{{ '{:,.0f}'.format(ecart).replace(',', ' ') }}</span>
+                      <span class="material-symbols-outlined text-[14px] leading-none">open_in_new</span>
+                    </a>
+                    {% else %}
+                    {{ '{:,.0f}'.format(ecart).replace(',', ' ') }}
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">
+                    {% if row['Evolution'] is not none %}{{ row['Evolution'] }}%{% else %}—{% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if pendings_ca_current %}
+        <form method="POST" action="{{ url_for('process_phase4') }}">
+          <button type="submit" class="w-full py-3.5 bg-orange-600 text-white rounded-xl font-bold hover:opacity-90">
+            Calculer le CA par sous-secteur
+          </button>
+        </form>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('import_skip_ca') }}">
+          <button type="submit" class="w-full py-3 border border-outline-variant rounded-xl text-sm font-semibold text-outline hover:bg-surface-container-low">
+            Passer cette étape — pas d'analyse CA
+          </button>
+        </form>
+      </div>
+
+      {# ── Étape 7 : Résultats ── #}
+      {% elif wizard_step >= 7 %}
+      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-on-surface">Résultats & export</h2>
+          <p class="text-sm text-outline mt-2">TCD final par secteur · indicateurs · téléchargements.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a href="{{ url_for('download_comparaison') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-container text-white rounded-xl text-sm font-bold hover:opacity-90">
+            <span class="material-symbols-outlined text-[18px]">download</span>
+            {% if sectors_complete %}Fichier en ligne complet (.xlsx){% else %}Fichier en ligne + Statut (.xlsx){% endif %}
+          </a>
+          <a href="{{ url_for('download_tcd_secteur') }}" class="inline-flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-xl text-sm font-semibold hover:bg-surface-container-low">
+            <span class="material-symbols-outlined text-[18px]">table_chart</span> TCD secteur (.xlsx)
+          </a>
+          {% if sectors_complete %}
+          <a href="{{ url_for('download_tcd_sous_secteur') }}" class="inline-flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-xl text-sm font-semibold hover:bg-surface-container-low">
+            <span class="material-symbols-outlined text-[18px]">table_view</span> TCD sous-secteur (.xlsx)
+          </a>
+          {% endif %}
+          {% if sectors_complete %}
+          <a href="{{ url_for('download_reliquataires_sous_secteur') }}" class="inline-flex items-center gap-2 px-4 py-2 border border-amber-300 rounded-xl text-sm font-semibold text-amber-900 hover:bg-amber-50">
+            <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span> Reliquataires SS (.xlsx)
+          </a>
+          {% endif %}
+          {% if ca_complete %}
+          <a href="{{ url_for('download_consolide_ca') }}" class="inline-flex items-center gap-2 px-4 py-2 border border-orange-300 rounded-xl text-sm font-semibold text-orange-800 hover:bg-orange-50">
+            <span class="material-symbols-outlined text-[18px]">download</span> Fichier en ligne + CA (.xlsx)
+          </a>
+          <a href="{{ url_for('download_ca_sous_secteur') }}" class="inline-flex items-center gap-2 px-4 py-2 border border-orange-300 rounded-xl text-sm font-semibold text-orange-800 hover:bg-orange-50">
+            <span class="material-symbols-outlined text-[18px]">payments</span> CA sous-secteur (.xlsx)
+          </a>
+          {% endif %}
+          <a href="{{ url_for('download_journal') }}" class="inline-flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-xl text-sm font-semibold hover:bg-surface-container-low">
+            <span class="material-symbols-outlined text-[18px]">history</span> Journal
+          </a>
+          <a href="{{ url_for('export_evaluation_pptx') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-xl text-sm font-bold hover:opacity-90">
+            <span class="material-symbols-outlined text-[18px]">slideshow</span> Rapport évaluation (.pptx)
+          </a>
+        </div>
+      </div>
+      <div class="p-8">
+
+        {% if sector_kpi %}
+        <div class="rounded-xl border border-blue-200 overflow-hidden mb-8">
+          <div class="overflow-x-auto custom-scrollbar max-h-[420px]">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-primary-container text-white text-[10px] uppercase">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold">SECTEUR</th>
+                  <th class="px-4 py-3 text-right font-semibold">DECLARANT</th>
+                  <th class="px-4 py-3 text-right font-semibold">Taux décl.</th>
+                  <th class="px-4 py-3 text-right font-semibold">DEFAIL</th>
+                  <th class="px-4 py-3 text-right font-semibold">Taux DEFAIL</th>
+                  <th class="px-4 py-3 text-right font-semibold">NEANT</th>
+                  <th class="px-4 py-3 text-right font-semibold">Taille fichier</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20">
+                {% for row in sector_kpi %}
+                {% set taux = row['Taux de declaration']|float %}
+                {% set is_total = row['SECTEUR'] == 'Total général' %}
+                <tr class="{% if is_total %}bg-blue-50 font-bold{% else %}hover:bg-surface-container-low/30{% endif %}">
+                  <td class="px-4 py-2.5 {% if is_total %}{% elif taux >= 70 %}kpi-rate-high{% elif taux >= 20 %}kpi-rate-mid{% else %}kpi-rate-low{% endif %}">{{ row['SECTEUR'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['DECLARANT'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '%.0f'|format(taux) }}%</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['DEFAIL'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '%.0f'|format(row['Taux de DEFAIL']|float) }}%</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['NEANT'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['Taille du fichier'] }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if sous_secteur_kpi %}
+        <div class="rounded-xl border border-emerald-200 overflow-hidden mb-8">
+          <div class="px-5 py-3 bg-emerald-50 border-b border-emerald-200">
+            <p class="text-sm font-bold text-emerald-900">TCD par Sous secteur</p>
+            <p class="text-xs text-emerald-800/80 mt-0.5">Taille = NIU du fichier secteurs · déclaration/def/néants = fichier en ligne (RECHERCHEV)</p>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar max-h-[420px]">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-[#0f766e] text-white text-[10px] uppercase">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold">SOUS SECTEUR</th>
+                  <th class="px-4 py-3 text-right font-semibold">Taille</th>
+                  <th class="px-4 py-3 text-right font-semibold">declaration</th>
+                  <th class="px-4 py-3 text-right font-semibold">Taux décl.</th>
+                  <th class="px-4 py-3 text-right font-semibold">def</th>
+                  <th class="px-4 py-3 text-right font-semibold">NEANT</th>
+                  <th class="px-4 py-3 text-right font-semibold">Non contrib.</th>
+                  <th class="px-4 py-3 text-right font-semibold">Taux NC</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20">
+                {% for row in sous_secteur_kpi %}
+                {% set is_total = row['SOUS SECTEUR'] == 'Total général' %}
+                <tr class="{% if is_total %}bg-emerald-50 font-bold{% else %}hover:bg-surface-container-low/30{% endif %}">
+                  <td class="px-4 py-2.5">{{ row['SOUS SECTEUR'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['Taille'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['declaration'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '%.0f'|format(row['Taux de declaration']|float) }}%</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['def'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['NEANT'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['Non contributeurs'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '%.0f'|format(row['Taux de non contributeurs']|float) }}%</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if reliquataires_sous_secteur %}
+        <div class="rounded-xl border border-amber-200 overflow-hidden mb-8">
+          <div class="px-5 py-3 bg-amber-50 border-b border-amber-200">
+            <p class="text-sm font-bold text-amber-950">Reliquataires et émissions par sous-secteur</p>
+            <p class="text-xs text-amber-900/80 mt-0.5">Reliquataires = état 2 (déclaré, rien payé) · Ratio = Montant reliquataires / Emissions × 100</p>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar max-h-[420px]">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-[#ea580c] text-white text-[10px] uppercase">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold">SOUS SECTEUR</th>
+                  <th class="px-4 py-3 text-right font-semibold">Reliquataires</th>
+                  <th class="px-4 py-3 text-right font-semibold">Montant reliquataires</th>
+                  <th class="px-4 py-3 text-right font-semibold">Emissions</th>
+                  <th class="px-4 py-3 text-right font-semibold">Ratio des reliquataires</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20">
+                {% for row in reliquataires_sous_secteur %}
+                {% set is_total = row['_is_total'] or row['SOUS SECTEUR'] == 'Total général' %}
+                <tr class="{% if is_total %}bg-amber-50 font-bold{% else %}hover:bg-surface-container-low/30{% endif %}">
+                  <td class="px-4 py-2.5">{{ row['SOUS SECTEUR'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ row['Reliquataires'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '{:,.0f}'.format(row['Montant reliquataires'] or 0).replace(',', ' ') }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '{:,.0f}'.format(row['Emissions'] or 0).replace(',', ' ') }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '%.1f'|format(row['Ratio des reliquataires']|float) }}%</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if ca_complete and ca_rows and ca_info %}
+        <div class="rounded-xl border border-orange-200 overflow-hidden mb-8">
+          <div class="px-5 py-3 bg-orange-50 border-b border-orange-200">
+            <p class="text-sm font-bold text-orange-900">CA par sous-secteur — {{ ca_info.col_current }} vs {{ ca_info.col_previous }}</p>
+            <p class="text-xs text-orange-800/80 mt-0.5">Total CA = CA_TAXABLE + CA_EXPORT + CA_EXONERE · TCD NIU puis RECHERCHEV · #N/A exclus</p>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar max-h-[420px]">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-[#c2410c] text-white text-[10px] uppercase">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold">SOUS SECTEUR</th>
+                  <th class="px-4 py-3 text-right font-semibold">{{ ca_info.col_current }}</th>
+                  <th class="px-4 py-3 text-right font-semibold">{{ ca_info.col_previous }}</th>
+                  <th class="px-4 py-3 text-right font-semibold">Ecart absolu</th>
+                  <th class="px-4 py-3 text-right font-semibold">Evolution</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20">
+                {% for row in ca_rows %}
+                <tr class="{% if row['_is_total'] %}bg-orange-50 font-bold{% else %}hover:bg-surface-container-low/30{% endif %}">
+                  <td class="px-4 py-2.5">{{ row['SOUS SECTEUR'] }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '{:,.0f}'.format(row[ca_info.col_current] or 0).replace(',', ' ') }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">{{ '{:,.0f}'.format(row[ca_info.col_previous] or 0).replace(',', ' ') }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">
+                    {% set ecart = (row['Ecart absolu'] or 0) %}
+                    {% if not row['_is_total'] and ecart < 0 %}
+                    <a
+                      href="{{ url_for('ca_sous_secteur_detail', sous_secteur=row['SOUS SECTEUR']) }}"
+                      class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-error-container/35 text-error font-semibold hover:bg-error-container/55 transition-colors"
+                      title="Voir le détail des NIU de ce sous-secteur"
+                    >
+                      <span>{{ '{:,.0f}'.format(ecart).replace(',', ' ') }}</span>
+                      <span class="material-symbols-outlined text-[14px] leading-none">open_in_new</span>
+                    </a>
+                    {% else %}
+                    {{ '{:,.0f}'.format(ecart).replace(',', ' ') }}
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-2.5 text-right font-mono-data">
+                    {% if row['Evolution'] is not none %}{{ row['Evolution'] }}%{% else %}—{% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if treatment_log %}
+        <div class="rounded-xl border border-outline-variant/40 p-5">
+          <p class="text-[10px] uppercase font-bold text-on-surface-variant mb-4">Journal de traitement</p>
+          <div class="space-y-3 max-h-48 overflow-y-auto custom-scrollbar text-sm">
+            {% for entry in treatment_log[::-1] %}
+            <div class="log-line {% if entry.level == 'error' %}error{% endif %}">
+              <p class="text-[10px] text-outline">{{ entry.at }} · {{ entry.step }}</p>
+              <p class="font-semibold text-on-surface">{{ entry.title }}</p>
+              {% if entry.detail %}<p class="text-xs text-outline mt-0.5">{{ entry.detail }}</p>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="{{ url_for('dashboard') }}" class="px-6 py-3 bg-primary-container text-white rounded-xl font-bold hover:opacity-90">Voir le dashboard</a>
+          <a href="{{ url_for('defaillants_list') }}" class="px-6 py-3 border border-outline-variant rounded-xl font-semibold hover:bg-surface-container-low">Liste défaillants</a>
+        </div>
+      </div>
+      {% endif %}
+
+    </main>
+  </div>
+</div>
+
+<div id="processing-overlay" class="processing-overlay" aria-hidden="true">
+  <div class="bg-white rounded-2xl border border-outline-variant/50 card-shadow px-8 py-6 text-center max-w-sm mx-4">
+    <span class="material-symbols-outlined text-[40px] text-primary-container animate-spin">progress_activity</span>
+    <p class="font-semibold text-on-surface mt-3">Traitement en cours…</p>
+    <p class="text-xs text-outline mt-1">Consolidation ou comparaison en cours — merci de patienter.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function wireUpload(inputId, formId, dropId) {
+    const input = document.getElementById(inputId);
+    const form = document.getElementById(formId);
+    const drop = document.getElementById(dropId);
+    if (!input || !form || !drop) return;
+    input.addEventListener('change', () => { if (input.files.length) form.submit(); });
+    ['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('dragover'); }));
+    drop.addEventListener('drop', ev => {
+      ev.preventDefault();
+      if (ev.dataTransfer.files.length) { input.files = ev.dataTransfer.files; form.submit(); }
+    });
+    drop.addEventListener('click', () => input.click());
+  }
+  wireUpload('file-input-p1', 'upload-form-p1', 'drop-zone-p1');
+  wireUpload('file-input-p2', 'upload-form-p2', 'drop-zone-p2');
+  wireUpload('file-input-p3', 'upload-form-p3', 'drop-zone-p3');
+  wireUpload('file-input-p4-current', 'upload-form-p4-current', 'drop-zone-p4-current');
+  wireUpload('file-input-p4-previous', 'upload-form-p4-previous', 'drop-zone-p4-previous');
+
+  const overlay = document.getElementById('processing-overlay');
+  document.querySelectorAll('form[method="POST"]').forEach(form => {
+    form.addEventListener('submit', () => {
+      if (overlay && !form.action.includes('import/goto')) {
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+    });
+  });
+</script>
+{% endblock %}

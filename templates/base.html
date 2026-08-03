@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html class="light" lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>{% block title %}TaxStats AI{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#00288e",
+            "primary-container": "#1e40af",
+            "on-primary": "#ffffff",
+            "secondary": "#0058be",
+            "secondary-container": "#2170e4",
+            "on-secondary": "#ffffff",
+            "secondary-fixed": "#d8e2ff",
+            "on-secondary-fixed-variant": "#004395",
+            "tertiary": "#003564",
+            "tertiary-fixed": "#d4e3ff",
+            "on-tertiary-fixed-variant": "#004883",
+            "surface": "#f8f9fb",
+            "on-surface": "#191c1e",
+            "on-surface-variant": "#444653",
+            "outline": "#757684",
+            "outline-variant": "#c4c5d5",
+            "error": "#ba1a1a",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            "inverse-surface": "#2e3132",
+            "surface-bright": "#f8f9fb",
+            "surface-variant": "#e1e2e4",
+            "surface-container": "#edeef0",
+            "surface-container-low": "#f3f4f6",
+            "primary-fixed": "#dde1ff",
+            "on-primary-fixed-variant": "#173bab"
+          },
+          spacing: {
+            "sidebar-width": "280px",
+            "margin-page": "2rem",
+            "gutter": "1.5rem"
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #F3F4F6; font-family: 'Inter', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 10px 15px -3px rgba(0,0,0,.02); }
+    .font-mono-data { font-family: 'JetBrains Mono', monospace; }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+    .nav-active { border-left: 4px solid #2170e4; background: rgba(255,255,255,.08); color: #fff; font-weight: 600; }
+    .nav-link { color: rgba(255,255,255,.65); }
+    .nav-link:hover { color: #fff; background: rgba(255,255,255,.05); }
+    .nav-sublink { color: rgba(255,255,255,.55); font-size: 0.8125rem; }
+    .nav-sublink:hover { color: #fff; background: rgba(255,255,255,.05); }
+    .nav-sublink-active { color: #fff; background: rgba(255,255,255,.08); font-weight: 600; }
+    {% block extra_css %}{% endblock %}
+  </style>
+</head>
+<body class="text-on-surface">
+
+{% set current = request.endpoint or '' %}
+{% set listes_endpoints = ['relicataires_list'] %}
+{% macro nav_link(endpoint, icon, label) %}
+<a href="{{ url_for(endpoint) }}"
+   class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all active:scale-[0.99] text-sm
+          {% if current == endpoint %}nav-active{% else %}nav-link{% endif %}">
+  <span class="material-symbols-outlined">{{ icon }}</span>
+  <span>{{ label }}</span>
+</a>
+{% endmacro %}
+{% macro nav_sublink(endpoint, label) %}
+<a href="{{ url_for(endpoint) }}"
+   class="flex items-center gap-2 pl-11 pr-4 py-2 rounded-lg transition-all text-sm
+          {% if current == endpoint %}nav-sublink-active{% else %}nav-sublink{% endif %}">
+  <span class="w-1 h-1 rounded-full bg-current opacity-60 shrink-0"></span>
+  <span>{{ label }}</span>
+</a>
+{% endmacro %}
+
+<!-- Sidebar -->
+<aside class="w-[280px] h-screen fixed left-0 top-0 bg-inverse-surface border-r border-outline-variant/20 flex flex-col py-6 z-50">
+  <div class="px-6 mb-8">
+    <h1 class="text-lg font-bold text-white">TaxStats AI</h1>
+    <p class="text-xs text-white/50 uppercase tracking-wider mt-0.5">{{ organisation_short }}</p>
+  </div>
+  <nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
+    {{ nav_link('dashboard', 'dashboard', 'Dashboard') }}
+    {{ nav_link('upload', 'file_upload', 'Import') }}
+    {{ nav_link('search', 'insights', 'Résultats') }}
+    {{ nav_link('defaillants_list', 'report', 'Défaillants') }}
+    {{ nav_link('declarants_list', 'assignment_turned_in', 'Déclarants') }}
+    <div class="pt-1">
+      <button type="button" id="nav-listes-toggle"
+              class="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg transition-all text-sm nav-link">
+        <span class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-[20px]">more_horiz</span>
+          <span class="text-white/50">Autres listes</span>
+        </span>
+        <span class="material-symbols-outlined text-[18px] text-white/40 transition-transform {% if current in listes_endpoints %}rotate-180{% endif %}" id="nav-listes-chevron">expand_more</span>
+      </button>
+      <div id="nav-listes-sub" class="mt-0.5 space-y-0.5 {% if current not in listes_endpoints %}hidden{% endif %}">
+        {{ nav_sublink('relicataires_list', 'Relicataires') }}
+      </div>
+    </div>
+    {{ nav_link('reports', 'description', 'Rapports') }}
+  </nav>
+  <div class="mt-auto px-4 space-y-1 pt-6 border-t border-white/10">
+    <a class="flex items-center gap-3 px-4 py-3 rounded-lg nav-link text-sm" href="#">
+      <span class="material-symbols-outlined">settings</span><span>Settings</span>
+    </a>
+    <a class="flex items-center gap-3 px-4 py-3 rounded-lg nav-link text-sm" href="#">
+      <span class="material-symbols-outlined">help_outline</span><span>Support</span>
+    </a>
+  </div>
+</aside>
+
+<!-- Header -->
+<header class="h-16 fixed top-0 right-0 w-[calc(100%-280px)] bg-surface border-b border-outline-variant flex items-center justify-between px-6 z-40">
+  <div class="flex items-center gap-4 flex-1 max-w-xl">
+    {% block header_search %}
+    <div class="relative w-full">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+      <input type="text" placeholder="{% block search_placeholder %}Rechercher...{% endblock %}"
+             class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-sm focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+    </div>
+    {% endblock %}
+  </div>
+  <div class="flex items-center gap-4 ml-4">
+    <div class="relative" id="notif-root">
+      <button type="button" id="notif-toggle"
+              class="relative text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors"
+              aria-label="Notifications">
+        <span class="material-symbols-outlined">notifications</span>
+        {% if notification_count %}
+        <span class="absolute top-1.5 right-1.5 min-w-[8px] h-2 px-0.5 bg-error rounded-full border-2 border-surface"></span>
+        {% endif %}
+      </button>
+      <div id="notif-panel"
+           class="hidden absolute right-0 top-full mt-2 w-96 max-h-[420px] overflow-hidden bg-white rounded-xl border border-outline-variant/60 card-shadow z-50">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/40">
+          <p class="text-sm font-bold text-on-surface">Notifications</p>
+          {% if notification_count %}
+          <form method="POST" action="{{ url_for('notifications_read') }}">
+            <button type="submit" class="text-xs text-primary-container font-semibold hover:underline">Tout marquer lu</button>
+          </form>
+          {% endif %}
+        </div>
+        <ul class="overflow-y-auto max-h-[340px] custom-scrollbar divide-y divide-outline-variant/30">
+          {% if app_notifications %}
+            {% for n in app_notifications %}
+            <li class="px-4 py-3 {% if not n.is_read %}bg-primary-fixed/20{% endif %}">
+              <div class="flex gap-2">
+                <span class="material-symbols-outlined text-[18px] shrink-0
+                  {% if n.level == 'warning' %}text-amber-600{% elif n.level == 'error' %}text-error{% else %}text-primary-container{% endif %}">
+                  {% if n.level == 'warning' %}warning{% elif n.level == 'error' %}error{% else %}info{% endif %}
+                </span>
+                <div class="min-w-0">
+                  <p class="text-sm text-on-surface leading-snug">{{ n.message }}</p>
+                  <p class="text-[10px] text-on-surface-variant mt-1">
+                    {{ n.created_at.strftime('%d/%m/%Y %H:%M') if n.created_at else '' }}
+                    {% if n.source %} · {{ n.source }}{% endif %}
+                  </p>
+                </div>
+              </div>
+            </li>
+            {% endfor %}
+          {% else %}
+            <li class="px-4 py-8 text-center text-sm text-on-surface-variant">Aucune notification</li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 pl-4 border-l border-outline-variant">
+      <div class="text-right hidden sm:block">
+        <p class="text-xs font-bold text-on-surface leading-none">Admin Fiscal</p>
+        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">{{ organisation_short }}</p>
+      </div>
+      <div class="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center text-on-primary text-xs font-bold">AF</div>
+      <a href="{{ url_for('logout') }}" class="text-on-surface-variant hover:text-error transition-colors p-1" title="Déconnexion">
+        <span class="material-symbols-outlined">logout</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- Main -->
+<main class="ml-[280px] pt-16 min-h-screen">
+  <div class="max-w-[1440px] mx-auto p-6">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for m in messages %}
+          <div class="mb-4 px-4 py-3 bg-primary-fixed/40 border border-primary-container/20 rounded-lg text-sm text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary-container text-[18px]">info</span>
+            {{ m }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+  {% block footer %}
+  <footer class="text-center py-6 text-xs text-on-surface-variant border-t border-outline-variant/30 mt-8 mx-6">
+    © 2026 {{ organisation_name }} ({{ organisation_short }}) — Système TaxStats AI. Tous droits réservés.
+  </footer>
+  {% endblock %}
+</main>
+
+{% block extra_js %}{% endblock %}
+<script>
+(function () {
+  var listesToggle = document.getElementById('nav-listes-toggle');
+  var listesSub = document.getElementById('nav-listes-sub');
+  var listesChevron = document.getElementById('nav-listes-chevron');
+  if (listesToggle && listesSub) {
+    listesToggle.addEventListener('click', function () {
+      listesSub.classList.toggle('hidden');
+      if (listesChevron) listesChevron.classList.toggle('rotate-180');
+    });
+  }
+})();
+(function () {
+  var root = document.getElementById('notif-root');
+  var toggle = document.getElementById('notif-toggle');
+  var panel = document.getElementById('notif-panel');
+  if (!root || !toggle || !panel) return;
+  toggle.addEventListener('click', function (e) {
+    e.stopPropagation();
+    panel.classList.toggle('hidden');
+  });
+  document.addEventListener('click', function (e) {
+    if (!root.contains(e.target)) panel.classList.add('hidden');
+  });
+})();
+</script>
+</body>
+</html>

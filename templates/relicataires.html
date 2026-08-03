@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Relicataires — TaxStats AI{% endblock %}
+{% block search_placeholder %}Rechercher un relicataire (NIU, nom)...{% endblock %}
+
+{% block content %}
+<div class="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-4">
+  <div>
+    <h2 class="text-2xl font-bold text-primary-container">Liste des relicataires</h2>
+    <p class="text-sm text-on-surface-variant mt-1">
+      Contribuables ayant <strong>déclaré</strong> mais <strong>n'ayant rien payé</strong> (montant payé N/A).
+      <span class="font-semibold text-secondary">{{ total }} relicataire(s)</span>
+    </p>
+  </div>
+  <div class="flex gap-2 shrink-0">
+    {% set excel_url = url_for('export_relicataires', format='excel') %}
+    {% set pdf_url = url_for('export_relicataires', format='pdf') %}
+    {% include 'partials/export_menu.html' %}
+  </div>
+</div>
+
+<div class="bg-white rounded-xl overflow-hidden card-shadow border border-outline-variant/60">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left">
+      <thead class="bg-surface-container-low text-[11px] uppercase tracking-wide text-on-surface-variant border-b border-outline-variant/50">
+        <tr>
+          <th class="px-6 py-3.5 font-semibold w-12">N°</th>
+          <th class="px-6 py-3.5 font-semibold">NIU</th>
+          <th class="px-6 py-3.5 font-semibold">Raison sociale</th>
+          <th class="px-6 py-3.5 font-semibold">CFLP</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/30">
+        {% if rows %}
+          {% for row in rows %}
+          <tr class="hover:bg-surface-container-low/50 transition-colors">
+            <td class="px-6 py-3.5 text-on-surface-variant">{{ loop.index }}</td>
+            <td class="px-6 py-3.5 font-mono-data text-primary-container font-semibold text-xs">{{ row.NIU }}</td>
+            <td class="px-6 py-3.5 font-medium">{{ row.Raison or '—' }}</td>
+            <td class="px-6 py-3.5 text-on-surface-variant text-xs">{{ row.CFLP or '—' }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="4" class="px-6 py-12 text-center text-on-surface-variant">
+              Aucun relicataire enregistré. Importez vos fichiers et lancez le traitement.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

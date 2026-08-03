@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — TaxStats AI{% endblock %}
+{% block search_placeholder %}Rechercher des statistiques...{% endblock %}
+
+{% block content %}
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+  <div>
+    <h2 class="text-3xl font-bold text-on-surface tracking-tight">Tableau de bord</h2>
+    <p class="text-sm text-on-surface-variant mt-1">Surveillance en temps réel des indicateurs de performance fiscale.</p>
+  </div>
+  <div class="flex gap-3">
+    <button type="button" class="flex items-center gap-2 px-4 py-2 border border-outline-variant bg-white rounded-lg text-sm font-medium hover:bg-surface-container transition-all">
+      <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+      Derniers 30 jours
+    </button>
+    {% set excel_url = url_for('export_stats', format='excel') %}
+    {% set pdf_url = url_for('export_stats', format='pdf') %}
+    {% set pptx_url = url_for('export_evaluation_pptx') %}
+    {% set label = 'Exporter rapport' %}
+    {% include 'partials/export_menu.html' %}
+  </div>
+</div>
+
+<!-- KPI Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+  <div class="bg-white p-5 rounded-xl border border-outline-variant/60 card-shadow">
+    <div class="flex justify-between items-start mb-3">
+      <div class="p-2 bg-primary-fixed/40 rounded-lg text-primary-container"><span class="material-symbols-outlined">groups</span></div>
+    </div>
+    <p class="text-[11px] text-on-surface-variant uppercase font-semibold tracking-wide">Total Contribuables</p>
+    <h3 class="text-2xl font-bold mt-1">{{ '{:,}'.format(total or 0).replace(',', ' ') }}</h3>
+    <p class="text-xs text-outline mt-2">Fichier en ligne (référence)</p>
+  </div>
+  <div class="bg-white p-5 rounded-xl border border-outline-variant/60 card-shadow">
+    <div class="flex justify-between items-start mb-3">
+      <div class="p-2 bg-emerald-100 rounded-lg text-emerald-700"><span class="material-symbols-outlined">trending_up</span></div>
+    </div>
+    <p class="text-[11px] text-on-surface-variant uppercase font-semibold tracking-wide">Taux de déclaration global</p>
+    <h3 class="text-2xl font-bold mt-1">{{ taux_global }}%</h3>
+    <div class="w-full bg-surface-variant h-1.5 rounded-full mt-4 overflow-hidden">
+      <div class="bg-emerald-600 h-full" style="width: {{ taux_global|round|int }}%"></div>
+    </div>
+    <p class="text-xs text-outline mt-2">{{ declarants_total or 0 }} déclarés sur {{ total or 0 }} · montant &gt; {{ montant_neant_max|int }} FCFA</p>
+  </div>
+  <div class="bg-white p-5 rounded-xl border border-outline-variant/60 card-shadow">
+    <div class="flex justify-between items-start mb-3">
+      <div class="p-2 bg-error-container/40 rounded-lg text-error"><span class="material-symbols-outlined">assignment_late</span></div>
+    </div>
+    <p class="text-[11px] text-on-surface-variant uppercase font-semibold tracking-wide">Défaillants (#N/A)</p>
+    <h3 class="text-2xl font-bold mt-1">{{ '{:,}'.format(defaillants or 0).replace(',', ' ') }}</h3>
+    <p class="text-xs text-outline mt-2"><strong>{{ taux_defaillant }}%</strong> du fichier en ligne</p>
+    <a href="{{ url_for('defaillants_list') }}" class="text-xs text-primary-container font-semibold hover:underline mt-1 inline-block">Voir la liste</a>
+  </div>
+  <div class="bg-white p-5 rounded-xl border border-outline-variant/60 card-shadow">
+    <div class="flex justify-between items-start mb-3">
+      <div class="p-2 bg-amber-100 rounded-lg text-amber-700"><span class="material-symbols-outlined">remove_circle_outline</span></div>
+    </div>
+    <p class="text-[11px] text-on-surface-variant uppercase font-semibold tracking-wide">Néants (0–{{ montant_neant_max|int }} FCFA)</p>
+    <h3 class="text-2xl font-bold mt-1">{{ '{:,}'.format(neants or 0).replace(',', ' ') }}</h3>
+    <p class="text-xs text-outline mt-2"><strong>{{ taux_neant }}%</strong> du fichier en ligne</p>
+  </div>
+  <div class="bg-white p-5 rounded-xl border border-outline-variant/60 card-shadow">
+    <div class="flex justify-between items-start mb-3">
+      <div class="p-2 bg-orange-100 rounded-lg text-orange-600"><span class="material-symbols-outlined">warning</span></div>
+    </div>
+    <p class="text-[11px] text-on-surface-variant uppercase font-semibold tracking-wide">Relicataires (rien payé)</p>
+    <h3 class="text-2xl font-bold mt-1 text-orange-600">{{ '{:,}'.format(relicataires or 0).replace(',', ' ') }}</h3>
+    <p class="text-xs text-outline mt-2"><strong>{{ taux_relicataire }}%</strong> du fichier en ligne</p>
+    <a href="{{ url_for('relicataires_list') }}" class="text-xs text-primary-container font-semibold hover:underline mt-1 inline-block">Voir la liste</a>
+  </div>
+  <div class="bg-white p-5 rounded-xl border border-outline-variant/60 card-shadow">
+    <div class="flex justify-between items-start mb-3">
+      <div class="p-2 bg-secondary-fixed/40 rounded-lg text-secondary"><span class="material-symbols-outlined">assignment_turned_in</span></div>
+    </div>
+    <p class="text-[11px] text-on-surface-variant uppercase font-semibold tracking-wide">Déclarants payés (&gt; {{ montant_neant_max|int }} FCFA)</p>
+    <h3 class="text-2xl font-bold mt-1">{{ '{:,}'.format(declarants or 0).replace(',', ' ') }}</h3>
+    <p class="text-xs text-outline mt-2"><strong>{{ taux_declarant }}%</strong> du fichier en ligne</p>
+    <a href="{{ url_for('declarants_list') }}" class="text-xs text-primary-container font-semibold hover:underline mt-1 inline-block">Voir la liste</a>
+  </div>
+</div>
+
+{% if comparison %}
+<div class="mb-8 bg-white rounded-xl border border-outline-variant/60 card-shadow overflow-hidden">
+  <div class="p-5 border-b border-outline-variant/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h4 class="font-semibold text-on-surface">Historique &amp; comparaison</h4>
+      <p class="text-xs text-on-surface-variant mt-1">Dernier traitement : {{ comparison.current.date }}{% if comparison.current.nb_fichiers %} — {{ comparison.current.nb_fichiers }} fichier(s){% endif %}</p>
+    </div>
+    {% if comparison.has_previous and comparison.delta %}
+    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold {% if comparison.delta.taux_declaration >= 0 %}bg-emerald-100 text-emerald-800{% else %}bg-error-container/40 text-error{% endif %}">
+      <span class="material-symbols-outlined text-[16px]">{% if comparison.delta.taux_declaration >= 0 %}arrow_upward{% else %}arrow_downward{% endif %}</span>
+      Taux {% if comparison.delta.taux_declaration > 0 %}+{% endif %}{{ comparison.delta.taux_declaration }} pts vs précédent
+    </span>
+    {% endif %}
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-px bg-outline-variant/30">
+    <div class="bg-white p-4">
+      <p class="text-[10px] uppercase text-outline font-semibold">Taux déclaration</p>
+      <p class="text-lg font-bold mt-1">{{ comparison.current.taux_declaration }}%</p>
+      {% if comparison.previous %}<p class="text-xs text-outline mt-1">Avant : {{ comparison.previous.taux_declaration }}%</p>{% endif %}
+    </div>
+    <div class="bg-white p-4">
+      <p class="text-[10px] uppercase text-outline font-semibold">Taux défaillants</p>
+      <p class="text-lg font-bold mt-1 text-error">{{ taux_defaillant|default(stats.taux_defaillant)|default(0) }}%</p>
+      <p class="text-xs text-outline mt-1">{{ comparison.current.defaillants }} contribuables</p>
+    </div>
+    <div class="bg-white p-4">
+      <p class="text-[10px] uppercase text-outline font-semibold">Néants</p>
+      <p class="text-lg font-bold mt-1">{{ comparison.current.neants|default(neants) }}</p>
+      <p class="text-xs text-outline mt-1">{{ taux_neant|default(stats.taux_neant)|default(0) }}% du total</p>
+    </div>
+    <div class="bg-white p-4">
+      <p class="text-[10px] uppercase text-outline font-semibold">Relicataires</p>
+      <p class="text-lg font-bold mt-1 text-orange-600">{{ comparison.current.relicataires|default(relicataires) }}</p>
+      <p class="text-xs text-outline mt-1">{{ taux_relicataire|default(stats.taux_relicataire)|default(0) }}% du total</p>
+    </div>
+    <div class="bg-white p-4">
+      <p class="text-[10px] uppercase text-outline font-semibold">Déclarants payés</p>
+      <p class="text-lg font-bold mt-1 text-primary-container">{{ comparison.current.declarants|default(declarants) }}</p>
+      <p class="text-xs text-outline mt-1">{{ taux_declarant|default(stats.taux_declarant)|default(0) }}% du total</p>
+    </div>
+  </div>
+
+  {% set montant_attendu = comparison.current.sum_montant_attendu|default(0) %}
+  {% set montant_recu = comparison.current.sum_montant_recu|default(0) %}
+  {% set montant_prev_attendu = comparison.previous.sum_montant_attendu|default(0) if comparison.previous else 0 %}
+  {% set montant_prev_recu = comparison.previous.sum_montant_recu|default(0) if comparison.previous else 0 %}
+  {% set taux_encaissement = ((montant_recu / montant_attendu * 100)|round(1)) if montant_attendu else 0 %}
+  {% set ecart_encaissement = montant_attendu - montant_recu %}
+  {% set bar_width = [taux_encaissement, 100]|min|round(0)|int %}
+  {% set delta_attendu = comparison.delta.sum_montant_attendu|default(0) if comparison.delta else 0 %}
+  {% set delta_recu = comparison.delta.sum_montant_recu|default(0) if comparison.delta else 0 %}
+
+  <div class="border-t border-outline-variant/10 bg-gradient-to-b from-[#f8fafc] via-white to-white px-5 py-8 sm:px-8 sm:py-10">
+
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-6">
+        <div>
+          <p class="text-base font-medium text-on-surface tracking-tight">Montants déclaratifs</p>
+          <p class="text-xs text-outline mt-1 leading-relaxed">
+            Du total déclaré dans vos fichiers sectoriels à l'encaissement effectif
+          </p>
+        </div>
+        {% if montant_attendu %}
+        <p class="text-[10px] text-outline/50 tabular-nums shrink-0">Montants en FCFA</p>
+        {% endif %}
+      </div>
+
+      {% if montant_attendu %}
+      <div class="rounded-[1.25rem] bg-white/90 backdrop-blur-sm border border-outline-variant/15 shadow-[0_1px_3px_rgba(15,23,42,0.04)] p-5 sm:p-8">
+
+        <div class="grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+
+          <div class="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left">
+            <div class="relative inline-flex items-baseline gap-1">
+              <span class="text-[3rem] sm:text-[3.25rem] font-light text-primary-container tabular-nums tracking-tight leading-none">{{ taux_encaissement }}</span>
+              <span class="text-2xl font-light text-primary-container/40">%</span>
+            </div>
+            <p class="text-sm text-outline mt-2">du montant déclaré a été encaissé</p>
+
+            <div class="w-full mt-6 max-w-md lg:max-w-none">
+              <div class="h-3.5 rounded-full bg-slate-100 overflow-hidden">
+                <div class="h-full rounded-full bg-gradient-to-r from-primary-container/80 via-primary-container to-emerald-500/90 transition-all duration-700 ease-out"
+                  style="width: {{ bar_width }}%"></div>
+              </div>
+              <div class="flex justify-between mt-2.5 text-[11px] text-outline/75">
+                <span class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-primary-container"></span>
+                  Encaissé · {{ '{:,.0f}'.format(montant_recu).replace(',', ' ') }}
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+                  Déclaré · {{ '{:,.0f}'.format(montant_attendu).replace(',', ' ') }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-7 grid sm:grid-cols-2 gap-4">
+            <div class="rounded-xl bg-slate-50/80 border border-outline-variant/10 px-5 py-5">
+              <p class="text-[11px] uppercase tracking-wide text-outline font-semibold mb-2">Montant attendu</p>
+              <p class="text-2xl sm:text-3xl font-semibold font-mono-data text-on-surface tabular-nums leading-tight">
+                {{ '{:,.0f}'.format(montant_attendu).replace(',', ' ') }}
+              </p>
+              <p class="text-xs text-outline/70 mt-2 leading-snug">Tous les montants déclarés, payés ou non</p>
+              {% if comparison.has_previous %}
+              <p class="text-[11px] text-outline/55 mt-3 pt-3 border-t border-outline-variant/10">
+                Avant : {{ '{:,.0f}'.format(montant_prev_attendu).replace(',', ' ') }}
+              </p>
+              {% endif %}
+            </div>
+            <div class="rounded-xl bg-primary-fixed/15 border border-primary-container/10 px-5 py-5">
+              <p class="text-[11px] uppercase tracking-wide text-primary-container/70 font-semibold mb-2">Montant reçu</p>
+              <p class="text-2xl sm:text-3xl font-semibold font-mono-data text-primary-container tabular-nums leading-tight">
+                {{ '{:,.0f}'.format(montant_recu).replace(',', ' ') }}
+              </p>
+              <p class="text-xs text-outline/70 mt-2 leading-snug">Montants effectivement payés (néants + déclarants)</p>
+              {% if comparison.has_previous %}
+              <p class="text-[11px] text-outline/55 mt-3 pt-3 border-t border-primary-container/10">
+                Avant : {{ '{:,.0f}'.format(montant_prev_recu).replace(',', ' ') }}
+              </p>
+              {% endif %}
+            </div>
+          </div>
+
+        </div>
+
+        {% if ecart_encaissement > 0 %}
+        <div class="mt-6 flex items-start gap-2.5 rounded-xl bg-amber-50/60 border border-amber-100/80 px-4 py-3.5">
+          <span class="material-symbols-outlined text-[18px] text-amber-600/70 mt-0.5 shrink-0">info</span>
+          <p class="text-xs text-amber-900/80 leading-relaxed">
+            <span class="font-medium">{{ '{:,.0f}'.format(ecart_encaissement).replace(',', ' ') }} FCFA</span>
+            déclarés restent sans encaissement (relicataires, impayés…)
+          </p>
+        </div>
+        {% endif %}
+
+        {% if comparison.has_previous and comparison.delta %}
+        <div class="mt-6 pt-5 border-t border-outline-variant/10 flex flex-wrap items-center gap-2">
+          <span class="text-[11px] text-outline/70 mr-1">Depuis le traitement précédent</span>
+          {% if delta_attendu == 0 %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] bg-slate-100 text-on-surface-variant">Déclaré stable</span>
+          {% elif delta_attendu > 0 %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] bg-emerald-50 text-emerald-800">Déclaré +{{ '{:,.0f}'.format(delta_attendu).replace(',', ' ') }}</span>
+          {% else %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] bg-amber-50 text-amber-900">{{ '{:,.0f}'.format(delta_attendu).replace(',', ' ') }} déclaré</span>
+          {% endif %}
+          {% if montant_prev_recu == 0 and montant_recu > 0 %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] bg-blue-50 text-primary-container">Premiers encaissements</span>
+          {% elif delta_recu == 0 %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] bg-slate-100 text-on-surface-variant">Encaissé stable</span>
+          {% elif delta_recu > 0 %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] bg-emerald-50 text-emerald-800">Encaissé +{{ '{:,.0f}'.format(delta_recu).replace(',', ' ') }}</span>
+          {% else %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] bg-amber-50 text-amber-900">{{ '{:,.0f}'.format(delta_recu).replace(',', ' ') }} encaissé</span>
+          {% endif %}
+        </div>
+        {% elif not comparison.has_previous %}
+        <p class="text-[11px] text-outline/45 mt-6 pt-5 border-t border-dashed border-outline-variant/10">
+          Première mesure enregistrée — l'évolution s'affichera au prochain traitement
+        </p>
+        {% endif %}
+
+      </div>
+      {% else %}
+      <div class="rounded-[1.25rem] bg-white/60 border border-dashed border-outline-variant/25 px-6 py-12 text-center">
+        <span class="material-symbols-outlined text-[28px] text-outline/25 mb-2 block">pie_chart</span>
+        <p class="text-sm text-outline/80">Les montants s'afficheront après un traitement complet.</p>
+      </div>
+      {% endif %}
+
+  </div>
+  {% if treatment_history|length > 1 %}
+  <div class="px-5 sm:px-8 py-6 border-t border-outline-variant/10 bg-[#fafbfc]">
+    <div>
+      <p class="text-sm font-medium text-on-surface">Historique des traitements</p>
+      <p class="text-xs text-outline/80 mt-0.5 mb-4">Évolution déclaré → encaissé</p>
+      <div class="overflow-x-auto rounded-xl border border-outline-variant/10 bg-white">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-outline/70 border-b border-outline-variant/10">
+              <th class="text-left py-3 px-4 font-medium">Date</th>
+              <th class="text-right py-3 px-2 font-medium">Taux</th>
+              <th class="text-right py-3 px-2 font-medium">Déclaré</th>
+              <th class="text-right py-3 px-4 font-medium">Encaissé</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/8">
+            {% for h in treatment_history %}
+            {% set h_attendu = h.sum_montant_attendu|default(0) %}
+            {% set h_recu = h.sum_montant_recu|default(0) %}
+            {% set h_pct = ((h_recu / h_attendu * 100)|round(0)|int) if h_attendu else 0 %}
+            <tr class="hover:bg-slate-50/80 transition-colors">
+              <td class="py-3 px-4 text-on-surface">{{ h.date }}</td>
+              <td class="text-right px-2 font-mono-data text-on-surface-variant">{{ h.taux_declaration }}%</td>
+              <td class="text-right px-2 font-mono-data text-outline">{{ '{:,.0f}'.format(h_attendu).replace(',', ' ') }}</td>
+              <td class="text-right px-4">
+                <span class="font-mono-data text-primary-container">{{ '{:,.0f}'.format(h_recu).replace(',', ' ') }}</span>
+                {% if h_attendu %}<span class="text-[10px] text-outline/50 ml-1">{{ h_pct }}%</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Charts -->
+<div class="grid grid-cols-12 gap-4">
+  <div class="col-span-12 lg:col-span-8 bg-white rounded-xl border border-outline-variant/60 card-shadow overflow-hidden">
+    <div class="bg-gradient-to-r from-[#e85d04] to-[#f48c06] px-5 py-3">
+      <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/90">Comparaison des recettes</p>
+      <p class="text-sm font-semibold text-white mt-0.5">
+        {% if recettes_mensuelles.years and recettes_mensuelles.years|length >= 2 %}
+          {{ recettes_mensuelles.years[0] }} vs {{ recettes_mensuelles.years[1] }}
+        {% elif recettes_mensuelles.years %}
+          {{ recettes_mensuelles.years[0] }}
+        {% elif recettes_mensuelles.title %}
+          {{ recettes_mensuelles.title }}
+        {% else %}
+          Par mois
+        {% endif %}
+      </p>
+    </div>
+    <div class="p-6">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+        <div>
+          <p class="text-sm font-medium text-on-surface-variant italic">Analyse infra annuelle</p>
+          <p class="text-xs text-outline mt-1">
+            {% if recettes_mensuelles.subtitle %}{{ recettes_mensuelles.subtitle }}{% else %}Montants reçus par mois (date de création) — comparaison par année{% endif %}
+          </p>
+        </div>
+        {% if recettes_mensuelles.series %}
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs shrink-0">
+            {% for s in recettes_mensuelles.series %}
+          <span class="flex items-center gap-2">
+            <span class="w-8 h-0.5 rounded-full" style="background-color: {{ s['color'] }}"></span>
+            <span class="text-on-surface-variant font-medium">{{ s['name'] }}</span>
+          </span>
+          {% endfor %}
+          {% if recettes_mensuelles.mode == 'single_year' %}
+          <span class="text-[10px] text-outline/70 italic">(2<sup>e</sup> courbe dès qu'une autre année apparaît dans date de création)</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if recettes_mensuelles.series and recettes_mensuelles.labels %}
+      <div class="flex gap-3 h-[320px]">
+        <div class="flex flex-col justify-between text-[8px] sm:text-[9px] leading-tight text-outline font-mono-data py-1 shrink-0 min-w-[10rem] sm:min-w-[11.5rem] text-right">
+          {% for lbl in recettes_mensuelles.y_tick_labels|reverse %}
+          <span class="whitespace-nowrap tabular-nums">{{ lbl }}</span>
+          {% endfor %}
+        </div>
+        <div class="flex-1 relative border-l border-b border-outline-variant/25 bg-[#fafafa]/50 rounded-br-lg">
+          <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 760 260">
+            {% for i in range(recettes_mensuelles.y_ticks|length) %}
+            {% set y = 230 - (recettes_mensuelles.y_ticks[i] / recettes_mensuelles.max_value * 210) if recettes_mensuelles.max_value else 230 %}
+            <line stroke="#E5E7EB" stroke-width="1" x1="0" x2="760" y1="{{ y }}" y2="{{ y }}"/>
+            {% endfor %}
+            {% set n = recettes_mensuelles.labels|length %}
+            {% for i in range(n) %}
+            {% set x = (i / (n - 1) * 760) if n > 1 else 380 %}
+            <line stroke="#F3F4F6" stroke-width="1" x1="{{ x }}" x2="{{ x }}" y1="20" y2="230"/>
+            {% endfor %}
+            {% for s in recettes_mensuelles.series %}
+            <polyline fill="none" stroke="{{ s['color'] }}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="{{ s['points'] }}"/>
+            {% for val in s['monthly_values'] %}
+            {% if val > 0 %}
+            {% set i = loop.index0 %}
+            {% set px = (i / (n - 1) * 760) if n > 1 else 380 %}
+            {% set py = 230 - (val / recettes_mensuelles.max_value * 210) if recettes_mensuelles.max_value else 230 %}
+            <circle cx="{{ px }}" cy="{{ py }}" r="4" fill="white" stroke="{{ s['color'] }}" stroke-width="2"/>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+          </svg>
+        </div>
+      </div>
+      <div class="flex justify-between mt-3 text-[11px] text-on-surface-variant pl-[10.5rem] sm:pl-[12rem] pr-1 font-medium">
+        {% for lbl in recettes_mensuelles.labels %}
+        <span class="text-center">{{ lbl }}</span>
+        {% endfor %}
+      </div>
+      <p class="text-[10px] text-outline/60 text-right mt-2 pl-[10.5rem] sm:pl-[12rem]">
+        Montants en FCFA · recettes reçues par date de création · période selon vos fichiers importés
+      </p>
+      {% else %}
+      <div class="relative h-[280px] flex items-center justify-center rounded-xl bg-surface-container-low/30 border border-dashed border-outline-variant/25">
+        <div class="text-center px-6 max-w-sm">
+          <span class="material-symbols-outlined text-[36px] text-outline/25 mb-3 block">timeline</span>
+          <p class="text-sm text-on-surface-variant font-medium">Comparaison mensuelle</p>
+          <p class="text-xs text-outline mt-2 leading-relaxed">
+            Relancez l'<strong>étape 1</strong> (consolidation) avec vos fichiers sectoriels contenant
+            <strong>date de création</strong> et <strong>montant reçu / payé</strong>.
+            Une courbe <strong>2026</strong> apparaît dès qu'il y a des montants reçus datés ;
+            la comparaison <strong>2025 / 2026</strong> s'affiche si les deux années sont dans vos fichiers.
+          </p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-span-12 lg:col-span-4 bg-white p-6 rounded-xl border border-outline-variant/60 card-shadow">
+    <h4 class="font-semibold text-on-surface mb-6">Répartition RECHERCHEV</h4>
+    <div class="flex flex-col items-center">
+      <div class="relative w-44 h-44 mb-6">
+        <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#E5E7EB" stroke-width="3.5"/>
+          {% set pct_decl = (taux_declarant|round|int) if total else 0 %}
+          {% set pct_relic = (taux_relicataire|round|int) if total else 0 %}
+          {% set pct_neant_chart = (taux_neant|round|int) if total else 0 %}
+          {% set pct_def = (taux_defaillant|round|int) if total else 0 %}
+          <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#1e40af" stroke-width="3.5" stroke-dasharray="{{ pct_decl }} {{ 100 - pct_decl }}" stroke-dashoffset="0"/>
+          <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f97316" stroke-width="3.5" stroke-dasharray="{{ pct_relic }} {{ 100 - pct_relic }}" stroke-dashoffset="-{{ pct_decl }}"/>
+          <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f59e0b" stroke-width="3.5" stroke-dasharray="{{ pct_neant_chart }} {{ 100 - pct_neant_chart }}" stroke-dashoffset="-{{ pct_decl + pct_relic }}"/>
+          <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#ba1a1a" stroke-width="3.5" stroke-dasharray="{{ pct_def }} {{ 100 - pct_def }}" stroke-dashoffset="-{{ pct_decl + pct_relic + pct_neant_chart }}"/>
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center"><span class="text-xl font-bold">100%</span><span class="text-[10px] text-outline uppercase">Total</span></div>
+      </div>
+      <div class="w-full space-y-2 text-sm">
+        <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-primary-container"></span>Déclarants payés</span><span class="font-mono-data">{{ pct_decl }}%</span></div>
+        <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>Relicataires (rien payé)</span><span class="font-mono-data">{{ pct_relic }}%</span></div>
+        <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>Néants (0–{{ montant_neant_max|int }} FCFA)</span><span class="font-mono-data">{{ pct_neant_chart }}%</span></div>
+        <div class="flex justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-error"></span>Défaillants (#N/A)</span><span class="font-mono-data">{{ pct_def }}%</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-span-12 lg:col-span-6 bg-white p-6 rounded-xl border border-outline-variant/60 card-shadow">
+    <div class="flex justify-between items-center mb-5"><h4 class="font-semibold">Taux de déclaration par CFLP</h4></div>
+    <div class="space-y-3">
+      {% set rates = cflp_rates if cflp_rates else cdi_chart %}
+      {% if rates %}
+        {% for item in rates[:8] %}
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span>{{ item.label }}</span>
+          <span class="font-mono-data">{{ item.pct }}%{% if item.total is defined %} <span class="text-outline">({{ item.declares }}/{{ item.total }})</span>{% endif %}</span>
+        </div>
+        <div class="h-2 bg-surface-variant rounded-full overflow-hidden"><div class="h-full bg-emerald-600 rounded-full" style="width: {{ item.pct }}%"></div></div>
+      </div>
+        {% endfor %}
+      {% else %}
+      <p class="text-sm text-on-surface-variant text-center py-4">Importez un fichier en ligne pour voir les taux par CFLP</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-span-12 lg:col-span-6 bg-white p-6 rounded-xl border border-outline-variant/60 card-shadow">
+    <h4 class="font-semibold mb-5">Répartition par Secteur</h4>
+    <div class="flex items-end justify-between h-[180px] px-2 border-b border-outline-variant/50">
+      {% if secteur_chart %}
+        {% for item in secteur_chart %}
+      <div class="flex flex-col items-center gap-1 group">
+        <div class="w-7 bg-secondary-container group-hover:bg-primary-container transition-colors rounded-t" style="height: {{ item.height }}px"></div>
+        <span class="text-[9px] text-outline -rotate-45 whitespace-nowrap mt-3">{{ item.name[:12] }}</span>
+      </div>
+        {% endfor %}
+      {% else %}
+      <p class="text-sm text-on-surface-variant w-full text-center">Aucune donnée secteur</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if ca_top10 %}
+<div class="mt-6 grid grid-cols-12 gap-4">
+  <div class="col-span-12 bg-white rounded-xl border border-outline-variant/60 card-shadow overflow-hidden">
+    <div class="px-5 py-3 bg-gradient-to-r from-[#c2410c] to-[#ea580c]">
+      <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/90">Analyse CA</p>
+      <p class="text-sm font-semibold text-white mt-0.5">Top 10 des chiffres d'affaires — {{ ca_top10.year }}</p>
+    </div>
+    <div class="p-6 grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div>
+        <h4 class="font-semibold text-on-surface mb-4">Top 10 supérieurs</h4>
+        <div class="space-y-3">
+          {% for row in ca_top10.top_high %}
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="truncate pr-3">{{ row.label }}</span>
+              <span class="font-mono-data">{{ '{:,.0f}'.format(row.value).replace(',', ' ') }}</span>
+            </div>
+            <div class="h-2 bg-orange-100 rounded-full overflow-hidden">
+              <div class="h-full bg-orange-600 rounded-full" style="width: {{ row.pct }}%"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <h4 class="font-semibold text-on-surface mb-4">Top 10 inférieurs</h4>
+        <div class="space-y-3">
+          {% for row in ca_top10.top_low %}
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="truncate pr-3">{{ row.label }}</span>
+              <span class="font-mono-data">{{ '{:,.0f}'.format(row.value).replace(',', ' ') }}</span>
+            </div>
+            <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-slate-500 rounded-full" style="width: {{ row.pct }}%"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Recent imports -->
+<div class="mt-6 bg-white rounded-xl border border-outline-variant/60 card-shadow overflow-hidden">
+  <div class="p-5 border-b border-outline-variant/50 flex justify-between items-center">
+    <h4 class="font-semibold">Dernières Déclarations</h4>
+    <div class="flex gap-1">
+      <button type="button" class="p-2 hover:bg-surface-container rounded-lg"><span class="material-symbols-outlined text-[20px]">filter_list</span></button>
+      <button type="button" class="p-2 hover:bg-surface-container rounded-lg"><span class="material-symbols-outlined text-[20px]">refresh</span></button>
+    </div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left">
+      <thead class="bg-surface-container-low text-[11px] uppercase tracking-wide text-on-surface-variant">
+        <tr>
+          <th class="px-6 py-3 font-semibold">N° Dossier</th>
+          <th class="px-6 py-3 font-semibold">Contribuable</th>
+          <th class="px-6 py-3 font-semibold text-right">Montant</th>
+          <th class="px-6 py-3 font-semibold">Date</th>
+          <th class="px-6 py-3 font-semibold">État</th>
+          <th class="px-6 py-3 font-semibold text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/30">
+        {% if imports %}
+          {% for imp in imports %}
+          <tr class="hover:bg-surface-container-low/50 transition-colors">
+            <td class="px-6 py-3.5 font-mono-data text-xs">#{{ imp.id }}</td>
+            <td class="px-6 py-3.5">{{ imp.filename }}</td>
+            <td class="px-6 py-3.5 text-right font-mono-data">{{ imp.nb_rows or '—' }} lignes</td>
+            <td class="px-6 py-3.5 text-xs text-outline">{{ imp.date_import }}</td>
+            <td class="px-6 py-3.5"><span class="px-2 py-0.5 bg-tertiary-fixed/40 text-on-tertiary-fixed-variant text-[10px] font-bold rounded uppercase">Importé</span></td>
+            <td class="px-6 py-3.5 text-center"><a href="{{ url_for('search') }}" class="p-1 text-primary-container hover:bg-primary-fixed/30 rounded inline-flex"><span class="material-symbols-outlined text-[18px]">visibility</span></a></td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="px-6 py-12 text-center text-on-surface-variant">
+              <span class="material-symbols-outlined text-[48px] opacity-20 block mb-2">upload_file</span>
+              Aucun import récent. Chargez vos fichiers sectoriels et le fichier en ligne.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

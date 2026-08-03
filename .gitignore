@@ -1,0 +1,31 @@
+# Environnement Python 
+env/
+.venv/
+venv/
+
+# Bases SQLite locales
+*.db
+data.db
+data_test*.db
+test_data.db
+
+# Fichiers uploadés / temporaires
+uploads/
+__pycache__/
+*.pyc
+*.pyo
+
+# Fichiers Excel temporaires / scripts de test locaux
+*.xlsx
+!assets/**
+out.txt
+tmp_*.py
+_compare_*.py
+_app_*.xlsx
+
+# Secrets / OS
+.env
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/0

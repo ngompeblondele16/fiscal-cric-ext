@@ -1,0 +1,852 @@
+{% extends "base.html" %}
+
+{% block title %}Rapports — TaxStats AI{% endblock %}
+
+{% block search_placeholder %}Rechercher un rapport...{% endblock %}
+
+
+
+{% block content %}
+
+<div class="flex flex-col lg:flex-row lg:items-start justify-between mb-6 gap-4">
+
+  <div>
+
+    <h2 class="text-2xl font-bold text-primary-container">Rapports Fiscaux</h2>
+
+    <p class="text-sm text-on-surface-variant mt-1">Évaluation mi-parcours — synthèse des déclarations et encaissements (format CRIC EXT).</p>
+
+  </div>
+
+  <div class="flex gap-2 shrink-0">
+    {% set excel_url = url_for('export_stats', format='excel') %}
+    {% set pdf_url = url_for('export_stats', format='pdf') %}
+    {% set pptx_url = url_for('export_evaluation_pptx') %}
+    {% include 'partials/export_menu.html' %}
+  </div>
+
+</div>
+
+
+
+<div class="bg-white rounded-xl p-8 md:p-10 card-shadow border border-outline-variant/60 w-full max-w-none">
+
+  <div class="flex flex-col sm:flex-row justify-between gap-6 mb-8 pb-6 border-b border-outline-variant/50">
+
+    <div>
+
+      <div class="w-14 h-14 bg-primary-container rounded-xl flex items-center justify-center mb-4">
+
+        <span class="material-symbols-outlined text-white text-[28px]">description</span>
+
+      </div>
+
+      <h1 class="text-2xl font-bold text-primary-container tracking-tight">ÉVALUATION MI-PARCOURS CRIC EXT</h1>
+
+      <p class="text-sm text-on-surface-variant mt-1 font-mono-data">Performance déclarative — {{ report_date }}</p>
+
+    </div>
+
+    <div class="text-right text-sm">
+
+      <p class="font-bold">TaxStats AI Admin Portal</p>
+
+      <p class="text-on-surface-variant text-xs">{{ organisation_name }} ({{ organisation_short }})</p>
+
+      <p class="text-on-surface-variant text-xs mt-2">Généré le {{ report_date }}</p>
+
+      <p class="text-on-surface-variant text-xs">Période : Exercice 2026</p>
+
+    </div>
+
+  </div>
+
+
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">I. PERFORMANCE PAR CENTRE (CFLP)</h2>
+
+    <p class="text-xs text-on-surface-variant mb-4">Montants déclarés (payés ou non) vs montants effectivement reçus — équivalent « évaluation par centre » du rapport manuel.</p>
+
+    <div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+
+      <table class="w-full text-sm">
+
+        <thead class="bg-surface-container-low text-[10px] uppercase">
+
+          <tr>
+
+            <th class="px-3 py-2.5 text-left font-semibold">Structure</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Contrib.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Décl.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taux décl.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Montant déclaré</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Montant reçu</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Écart</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taux enc.</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody class="divide-y divide-outline-variant/30">
+
+          {% for row in performance_cflp %}
+
+          <tr class="{% if row.label == 'Total général' %}bg-surface-container-low/60 font-semibold{% endif %}">
+
+            <td class="px-3 py-2">{{ row.label }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.contribuables }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.declarations }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taux_declaration }}%</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ '{:,.0f}'.format(row.montant_declare).replace(',', ' ') }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data text-blue-800">{{ '{:,.0f}'.format(row.montant_recu).replace(',', ' ') }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data text-outline">{{ '{:,.0f}'.format(row.ecart).replace(',', ' ') }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taux_encaissement }}%</td>
+
+          </tr>
+
+          {% else %}
+
+          <tr><td colspan="8" class="px-4 py-6 text-center text-on-surface-variant">Importez des fichiers pour générer ce tableau</td></tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">II. TAUX DE DÉCLARATION PAR SECTEUR</h2>
+
+    <div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+
+      <table class="w-full text-sm">
+
+        <thead class="bg-surface-container-low text-[10px] uppercase">
+
+          <tr>
+
+            <th class="px-3 py-2.5 text-left font-semibold">Secteur</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taille fichier</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Déclarations</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taux décl.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Défaillants</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Néants</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Non contrib.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taux NC</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody class="divide-y divide-outline-variant/30">
+
+          {% for row in taux_secteur %}
+
+          <tr class="{% if row.label == 'Total général' %}bg-surface-container-low/60 font-semibold{% endif %}">
+
+            <td class="px-3 py-2">{{ row.label }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taille_fichier }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.declarations }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taux_declaration }}%</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.defaillants }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.neants }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.non_contributeur }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taux_non_contributeur }}%</td>
+
+          </tr>
+
+          {% else %}
+
+          <tr><td colspan="8" class="px-4 py-6 text-center text-on-surface-variant">Importez des fichiers pour générer ce tableau</td></tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">II bis. TAUX DE DÉCLARATION PAR SOUS-SECTEUR</h2>
+
+    <div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+
+      <table class="w-full text-sm">
+
+        <thead class="bg-surface-container-low text-[10px] uppercase">
+
+          <tr>
+
+            <th class="px-3 py-2.5 text-left font-semibold">Sous secteur</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taille</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Déclarations</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taux décl.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Défaillants</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Néants</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Non contrib.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taux NC</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody class="divide-y divide-outline-variant/30">
+
+          {% for row in taux_sous_secteur %}
+
+          <tr class="{% if row.label == 'Total général' %}bg-surface-container-low/60 font-semibold{% endif %}">
+
+            <td class="px-3 py-2">{{ row.label }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taille_fichier }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.declarations }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taux_declaration }}%</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.defaillants }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.neants }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.non_contributeur }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taux_non_contributeur }}%</td>
+
+          </tr>
+
+          {% else %}
+
+          <tr><td colspan="8" class="px-4 py-6 text-center text-on-surface-variant">Associez les secteurs (étape 5) pour générer ce tableau</td></tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">III. TAUX DE DÉCLARATION PAR CFLP</h2>
+
+    <div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+
+      <table class="w-full text-sm">
+
+        <thead class="bg-surface-container-low text-[10px] uppercase">
+
+          <tr>
+
+            <th class="px-3 py-2.5 text-left font-semibold">Structure</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taille fichier</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Déclarations</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taux décl.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Défaillants</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Néants</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Non contrib.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taux NC</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody class="divide-y divide-outline-variant/30">
+
+          {% for row in taux_structure %}
+
+          <tr class="{% if row.label == 'Total général' %}bg-surface-container-low/60 font-semibold{% endif %}">
+
+            <td class="px-3 py-2">{{ row.label }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taille_fichier }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.declarations }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taux_declaration }}%</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.defaillants }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.neants }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.non_contributeur }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taux_non_contributeur }}%</td>
+
+          </tr>
+
+          {% else %}
+
+          <tr><td colspan="8" class="px-4 py-6 text-center text-on-surface-variant">Aucune structure avec contribuables</td></tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">IV. MONTANTS DÉCLARÉS ET REÇUS PAR SECTEUR</h2>
+
+    <p class="text-xs text-on-surface-variant mb-4">Équivalent des « émissions » du rapport manuel, calculé à partir des montants consolidés sectoriels.</p>
+
+    <div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+
+      <table class="w-full text-sm">
+
+        <thead class="bg-surface-container-low text-[10px] uppercase">
+
+          <tr>
+
+            <th class="px-3 py-2.5 text-left font-semibold">Secteur</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Contrib.</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Montant déclaré</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Montant reçu</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Écart</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Taux enc.</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody class="divide-y divide-outline-variant/30">
+
+          {% for row in montants_secteur %}
+
+          <tr class="{% if row.label == 'Total général' %}bg-surface-container-low/60 font-semibold{% endif %}">
+
+            <td class="px-3 py-2">{{ row.label }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.contribuables }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ '{:,.0f}'.format(row.montant_declare).replace(',', ' ') }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data text-blue-800">{{ '{:,.0f}'.format(row.montant_recu).replace(',', ' ') }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data text-outline">{{ '{:,.0f}'.format(row.ecart).replace(',', ' ') }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.taux_encaissement }}%</td>
+
+          </tr>
+
+          {% else %}
+
+          <tr><td colspan="6" class="px-4 py-6 text-center text-on-surface-variant">Importez des fichiers pour générer ce tableau</td></tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">IV bis. RELIQUATAIRES ET ÉMISSIONS PAR SOUS-SECTEUR</h2>
+
+    <p class="text-xs text-on-surface-variant mb-4">Reliquataires = état 2 (déclaré, rien payé) · Emissions = somme des montants émis · Ratio = Montant reliquataires / Emissions × 100.</p>
+
+    <div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+
+      <table class="w-full text-sm">
+
+        <thead class="bg-[#ea580c] text-white text-[10px] uppercase">
+
+          <tr>
+
+            <th class="px-3 py-2.5 text-left font-semibold">SOUS SECTEUR</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Reliquataires</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Montant reliquataires</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Emissions</th>
+
+            <th class="px-3 py-2.5 text-right font-semibold">Ratio des reliquataires</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody class="divide-y divide-outline-variant/30">
+
+          {% for row in reliquataires_sous_secteur %}
+
+          <tr class="{% if row.label == 'Total général' %}bg-amber-50/80 font-semibold{% endif %}">
+
+            <td class="px-3 py-2">{{ row.label }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.reliquataires }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ '{:,.0f}'.format(row.montant_reliquataires or 0).replace(',', ' ') }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ '{:,.0f}'.format(row.emissions or 0).replace(',', ' ') }}</td>
+
+            <td class="px-3 py-2 text-right font-mono-data">{{ row.ratio_reliquataires }}%</td>
+
+          </tr>
+
+          {% else %}
+
+          <tr><td colspan="5" class="px-4 py-6 text-center text-on-surface-variant">Terminez les étapes 4 et 5 pour générer ce tableau</td></tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">V. STATISTIQUES CLÉS</h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <div class="border border-outline-variant/50 rounded-xl p-5">
+
+        <h3 class="text-sm font-bold mb-4">Répartition par Secteur</h3>
+
+        {% if secteur_chart %}
+
+        <div class="flex items-end justify-around h-[120px] border-b border-outline-variant/30 pb-2 gap-1">
+
+          {% for bar in secteur_chart %}
+
+          <div class="flex flex-col items-center flex-1 min-w-0">
+
+            <div class="w-full max-w-[28px] bg-primary-container/80 rounded-t mx-auto" style="height: {{ bar.height }}px" title="{{ bar.name }} ({{ bar.count }})"></div>
+
+          </div>
+
+          {% endfor %}
+
+        </div>
+
+        <p class="text-xs text-center text-on-surface-variant mt-2 truncate">
+
+          {% if secteur_chart %}{{ secteur_chart[0].name }}{% if secteur_chart|length > 1 %} + {{ secteur_chart|length - 1 }} autres{% endif %}{% else %}—{% endif %}
+
+        </p>
+
+        {% else %}
+
+        <p class="text-sm text-on-surface-variant text-center py-8">Importez des fichiers pour voir la répartition</p>
+
+        {% endif %}
+
+      </div>
+
+      <div class="border border-outline-variant/50 rounded-xl p-5">
+
+        <h3 class="text-sm font-bold mb-4">Évolution des imports</h3>
+
+        {% if evolution_chart %}
+
+        <div class="h-[120px] flex items-end px-1 gap-0.5">
+
+          {% for bar in evolution_chart %}
+
+          <div class="flex-1 bg-primary-container rounded-t opacity-80" style="height: {{ bar.height }}%"></div>
+
+          {% endfor %}
+
+        </div>
+
+        <p class="text-xs text-center text-on-surface-variant mt-2">{{ evolution_chart|length }} dernier(s) import(s) — {{ pct_paid }}% déclarants</p>
+
+        {% else %}
+
+        <p class="text-sm text-on-surface-variant text-center py-8">Aucun historique d'import disponible</p>
+
+        {% endif %}
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">VI. LISTE DES DÉFAILLANTS (n'ont pas déclaré)</h2>
+
+    <div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+
+      <table class="w-full text-sm">
+
+        <thead class="bg-surface-container-low text-[10px] uppercase">
+
+          <tr>
+
+            <th class="px-4 py-2.5 text-left font-semibold">NIU</th>
+
+            <th class="px-4 py-2.5 text-left font-semibold">Raison Sociale</th>
+
+            <th class="px-4 py-2.5 text-left font-semibold">CFLP</th>
+
+            <th class="px-4 py-2.5 text-left font-semibold">Montant Attendu</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody class="divide-y divide-outline-variant/30">
+
+          {% if non_decl_data %}
+
+            {% for row in non_decl_data %}
+
+            <tr>
+
+              <td class="px-4 py-2.5 font-mono-data text-xs">{{ row.niu }}</td>
+
+              <td class="px-4 py-2.5">{{ row.raison }}</td>
+
+              <td class="px-4 py-2.5 text-xs">{{ row.cdi or '—' }}</td>
+
+              <td class="px-4 py-2.5 font-mono-data">{{ '{:,.0f}'.format(row.montant_attendu or 0).replace(',', ' ') }}</td>
+
+            </tr>
+
+            {% endfor %}
+
+          {% else %}
+
+            <tr><td colspan="4" class="px-4 py-6 text-center text-on-surface-variant">Aucun défaillant enregistré</td></tr>
+
+          {% endif %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    {% if defaillants and defaillants > 8 %}
+
+    <p class="text-xs text-on-surface-variant mt-2">
+
+      Aperçu de 8 sur {{ defaillants }} —
+
+      <a href="{{ url_for('defaillants_list') }}" class="text-primary-container font-semibold hover:underline">voir toute la liste</a>
+
+      ou
+
+      <a href="{{ url_for('export_defaillants', format='excel') }}" class="text-primary-container font-semibold hover:underline">Excel</a>
+      ou
+      <a href="{{ url_for('export_defaillants', format='pdf') }}" class="text-primary-container font-semibold hover:underline">PDF</a>.
+
+    </p>
+
+    {% endif %}
+
+  </section>
+
+
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">VII. LISTE DES RELICATAIRES (rien payé — N/A)</h2>
+
+    <div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+
+      <table class="w-full text-sm">
+
+        <thead class="bg-surface-container-low text-[10px] uppercase">
+
+          <tr>
+
+            <th class="px-4 py-2.5 text-left font-semibold">NIU</th>
+            <th class="px-4 py-2.5 text-left font-semibold">Raison Sociale</th>
+            <th class="px-4 py-2.5 text-left font-semibold">CFLP</th>
+            <th class="px-4 py-2.5 text-left font-semibold">Montant déclaré</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-outline-variant/30">
+          {% if relicataires_data %}
+            {% for row in relicataires_data %}
+            <tr>
+              <td class="px-4 py-2.5 font-mono-data text-xs">{{ row.niu }}</td>
+              <td class="px-4 py-2.5">{{ row.raison }}</td>
+              <td class="px-4 py-2.5 text-xs">{{ row.cdi or '—' }}</td>
+              <td class="px-4 py-2.5 font-mono-data">{{ '{:,.0f}'.format(row.montant_declare or 0).replace(',', ' ') }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="4" class="px-4 py-6 text-center text-on-surface-variant">Aucun relicataire enregistré</td></tr>
+
+          {% endif %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    {% if relicataires and relicataires > 8 %}
+
+    <p class="text-xs text-on-surface-variant mt-2">
+
+      Aperçu de 8 sur {{ relicataires }} —
+
+      <a href="{{ url_for('relicataires_list') }}" class="text-primary-container font-semibold hover:underline">voir toute la liste</a>
+
+      ou
+
+      <a href="{{ url_for('export_relicataires', format='excel') }}" class="text-primary-container font-semibold hover:underline">Excel</a>
+      ou
+      <a href="{{ url_for('export_relicataires', format='pdf') }}" class="text-primary-container font-semibold hover:underline">PDF</a>.
+
+    </p>
+
+    {% endif %}
+
+  </section>
+
+  <section class="mb-8">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">VIII. LISTE DES DÉCLARANTS (dont {{ pct_neants_in_declarants }}% néants)</h2>
+
+    <div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+
+      <table class="w-full text-sm">
+
+        <thead class="bg-surface-container-low text-[10px] uppercase">
+
+          <tr>
+
+            <th class="px-4 py-2.5 text-left font-semibold">NIU</th>
+
+            <th class="px-4 py-2.5 text-left font-semibold">Raison Sociale</th>
+
+            <th class="px-4 py-2.5 text-left font-semibold">Catégorie</th>
+
+            <th class="px-4 py-2.5 text-left font-semibold">CFLP</th>
+
+            <th class="px-4 py-2.5 text-left font-semibold">Montant déclaré</th>
+
+            <th class="px-4 py-2.5 text-left font-semibold">Montant reçu</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody class="divide-y divide-outline-variant/30">
+
+          {% if declarants_data %}
+
+            {% for row in declarants_data %}
+
+            <tr>
+
+              <td class="px-4 py-2.5 font-mono-data text-xs">{{ row.niu }}</td>
+
+              <td class="px-4 py-2.5">{{ row.raison }}</td>
+
+              <td class="px-4 py-2.5"><span class="text-xs font-semibold {% if row.categorie == 'Néant' %}text-amber-700{% else %}text-primary-container{% endif %}">{{ row.categorie }}</span></td>
+
+              <td class="px-4 py-2.5 text-xs">{{ row.cdi or '—' }}</td>
+
+              <td class="px-4 py-2.5 font-mono-data">{{ '{:,.0f}'.format(row.montant_declare or 0).replace(',', ' ') }}</td>
+
+              <td class="px-4 py-2.5 font-mono-data text-blue-800">{% if row.montant_paye is string %}{{ row.montant_paye }}{% else %}{{ '{:,.0f}'.format(row.montant_paye or 0).replace(',', ' ') }}{% endif %}</td>
+
+            </tr>
+
+            {% endfor %}
+
+          {% else %}
+
+            <tr><td colspan="6" class="px-4 py-6 text-center text-on-surface-variant">Aucun déclarant enregistré</td></tr>
+
+          {% endif %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    {% if declarants_total and declarants_total > 8 %}
+
+    <p class="text-xs text-on-surface-variant mt-2">
+
+      Aperçu de 8 sur {{ declarants_total }} (dont {{ pct_neants_in_declarants }}% néants) —
+
+      <a href="{{ url_for('declarants_list') }}" class="text-primary-container font-semibold hover:underline">voir toute la liste</a>
+
+      ou
+
+      <a href="{{ url_for('export_declarants', format='excel') }}" class="text-primary-container font-semibold hover:underline">Excel</a>
+      ou
+      <a href="{{ url_for('export_declarants', format='pdf') }}" class="text-primary-container font-semibold hover:underline">PDF</a>.
+
+    </p>
+
+    {% endif %}
+
+  </section>
+
+
+
+  <section class="mb-6">
+
+    <h2 class="text-lg font-bold text-primary-container mb-4">IX. SYNTHÈSE PAR CFLP</h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <div class="bg-surface-container-low rounded-lg p-4">
+
+        <h3 class="text-xs font-bold uppercase mb-3">Top Centres (Volume)</h3>
+
+        <ul class="text-xs space-y-2">
+
+          {% for c in cdi_stats[:4] %}
+
+          <li class="flex justify-between"><span>{{ c.cdi }}</span><span class="font-mono-data">{{ c.count }} dossiers</span></li>
+
+          {% else %}
+
+          <li class="text-on-surface-variant">Données non disponibles</li>
+
+          {% endfor %}
+
+        </ul>
+
+      </div>
+
+      <div class="bg-surface-container-low rounded-lg p-4">
+
+        <h3 class="text-xs font-bold uppercase mb-3">Indicateurs Globaux</h3>
+
+        <ul class="text-xs space-y-2">
+
+          <li class="flex justify-between"><span>Total contribuables (en ligne)</span><span class="font-bold">{{ '{:,}'.format(total or 0).replace(',', ' ') }}</span></li>
+
+          <li class="flex justify-between"><span>Déclarants</span><span class="font-bold text-primary-container">{{ '{:,}'.format(declarants_total or 0).replace(',', ' ') }} <span class="text-xs font-normal text-outline">(dont {{ pct_neants_in_declarants }}% néants)</span></span></li>
+
+          <li class="flex justify-between"><span>Relicataires (rien payé)</span><span class="font-bold text-orange-600">{{ '{:,}'.format(relicataires or 0).replace(',', ' ') }}</span></li>
+
+          <li class="flex justify-between"><span>Défaillants (non déclarés)</span><span class="font-bold text-error">{{ '{:,}'.format(defaillants or 0).replace(',', ' ') }}</span></li>
+
+          <li class="flex justify-between"><span>Montant attendu (déclaré)</span><span class="font-mono-data">{{ '{:,.0f}'.format(sum_declare_attendu or 0).replace(',', ' ') }}</span></li>
+
+          <li class="flex justify-between"><span>Montant reçu</span><span class="font-mono-data text-blue-800">{{ '{:,.0f}'.format(sum_recu or 0).replace(',', ' ') }}</span></li>
+
+          <li class="flex justify-between"><span>Taux d'encaissement</span><span class="font-bold">{{ taux_encaissement }}%</span></li>
+
+        </ul>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+
+  <div class="pt-6 border-t border-dashed border-outline-variant text-xs text-on-surface-variant space-y-1">
+
+    <p class="font-semibold text-on-surface">VISA DE L'AUDITEUR</p>
+
+    <p class="border-b border-dotted border-outline w-48 mb-4">&nbsp;</p>
+
+    <p>Document confidentiel — Usage interne uniquement</p>
+
+  </div>
+
+</div>
+
+{% endblock %}
+
+
+
+{% block footer %}{% endblock %}
+

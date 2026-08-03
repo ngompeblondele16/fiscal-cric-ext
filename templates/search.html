@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Résultats — TaxStats AI{% endblock %}
+
+{% block header_search %}
+<div class="relative w-full max-w-lg">
+  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+  <form method="get" action="{{ url_for('search') }}">
+    <input name="q" value="{{ q or '' }}" type="text" placeholder="Rechercher par NIU ou Nom..."
+           class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-sm focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+  </form>
+</div>
+{% endblock %}
+
+{% block content %}
+<nav class="flex items-center gap-2 text-sm text-on-surface-variant mb-4">
+  <span>Analyses</span><span>/</span><span class="text-on-surface font-semibold">Résultats détaillés</span>
+</nav>
+
+<div class="flex flex-col lg:flex-row lg:items-start justify-between mb-6 gap-4">
+  <div>
+    <h2 class="text-2xl font-bold text-on-surface">Résultats d'analyse fiscale</h2>
+    <p class="text-sm text-on-surface-variant mt-1">Visualisation et filtrage des données consolidées de la période en cours.</p>
+  </div>
+  <div class="flex gap-2 shrink-0">
+    {% set excel_url = url_for('export', format='excel', q=q, cdi=cdi, secteur=secteur, etat=etat, statut=statut) %}
+    {% set pdf_url = url_for('export', format='pdf', q=q, cdi=cdi, secteur=secteur, etat=etat, statut=statut) %}
+    {% include 'partials/export_menu.html' %}
+    <a href="{{ url_for('upload') }}" class="flex items-center gap-2 px-4 py-2 bg-primary-container text-white rounded-lg text-sm font-semibold hover:opacity-90">
+      <span class="material-symbols-outlined text-[18px]">add</span>NOUVELLE ANALYSE
+    </a>
+  </div>
+</div>
+
+{% if total_count %}
+<div class="bg-primary-container text-white rounded-xl p-5 mb-6 card-shadow flex items-center justify-between">
+  <div>
+    <p class="text-xs uppercase tracking-wider opacity-80">Total analysé</p>
+    <p class="text-3xl font-bold">{{ '{:,}'.format(total_count).replace(',', ' ') }}</p>
+    <p class="text-sm opacity-80">Contribuables uniques</p>
+  </div>
+  <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold">+4.2% vs trim. préc.</span>
+</div>
+{% endif %}
+
+<!-- Filters -->
+<div class="bg-white rounded-xl p-5 mb-6 card-shadow border border-outline-variant/60">
+  <p class="text-xs font-bold uppercase tracking-wide text-on-surface-variant mb-4 flex items-center gap-2">
+    <span class="material-symbols-outlined text-[18px]">tune</span>Filtres avancés
+  </p>
+  <form method="get" action="{{ url_for('search') }}" id="filters-form">
+    <input type="hidden" name="q" id="filter-q" value="{{ q or '' }}"/>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+      <div>
+        <label class="block text-[10px] font-bold uppercase text-on-surface-variant mb-1.5">CFLP</label>
+        <select name="cdi" class="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:ring-2 focus:ring-primary-container focus:outline-none bg-white">
+          <option value="">Tous les CFLP</option>
+          {% for c in cflp_centres %}
+          <option value="{{ c }}" {% if cdi == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+          {% if cflp_extra %}
+          <optgroup label="Autres">
+            {% for c in cflp_extra %}<option value="{{ c }}" {% if cdi == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+          </optgroup>
+          {% endif %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold uppercase text-on-surface-variant mb-1.5">Secteur d'activité</label>
+        <select name="secteur" class="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:ring-2 focus:ring-primary-container focus:outline-none bg-white">
+          <option value="">Tous les secteurs</option>
+          {% for s in secteur_list %}<option value="{{ s }}" {% if secteur == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold uppercase text-on-surface-variant mb-1.5">Statut Déclaratif</label>
+        <select name="statut" class="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:ring-2 focus:ring-primary-container focus:outline-none bg-white">
+          <option value="">Tous les statuts</option>
+          <option value="Défaillant" {% if statut == 'Défaillant' or statut == 'Non déclaré' %}selected{% endif %}>Défaillant (n'a pas déclaré)</option>
+          <option value="Relicataire" {% if statut == 'Relicataire' %}selected{% endif %}>Relicataire (rien payé — N/A)</option>
+          <option value="Déclarant" {% if statut == 'Déclarant' or statut == 'Payé' %}selected{% endif %}>Déclarant (incl. néants)</option>
+          <option value="Néant" {% if statut == 'Néant' %}selected{% endif %}>Néant seulement (0–{{ montant_neant_max|int }} FCFA)</option>
+        </select>
+      </div>
+    </div>
+    <div class="mt-4 flex flex-wrap gap-2">
+      <button type="submit" class="px-5 py-2 bg-primary-container text-white rounded-lg text-sm font-bold hover:opacity-90">APPLIQUER LES FILTRES</button>
+      <a href="{{ url_for('search') }}"
+         class="inline-flex items-center px-5 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container">
+        RÉINITIALISER
+      </a>
+    </div>
+  </form>
+</div>
+
+<!-- Table -->
+<div class="bg-white rounded-xl overflow-hidden card-shadow border border-outline-variant/60">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left">
+      <thead class="bg-surface-container-low text-[11px] uppercase tracking-wide text-on-surface-variant border-b border-outline-variant/50">
+        <tr>
+          <th class="px-6 py-3.5 font-semibold">NIU</th>
+          <th class="px-6 py-3.5 font-semibold">Nom de l'entité</th>
+          <th class="px-6 py-3.5 font-semibold">Secteur</th>
+          <th class="px-6 py-3.5 font-semibold">CFLP</th>
+          <th class="px-6 py-3.5 font-semibold text-right">Montant attendu</th>
+          <th class="px-6 py-3.5 font-semibold text-right">Montant déclaré</th>
+          <th class="px-6 py-3.5 font-semibold">Statut fiscal</th>
+          <th class="px-6 py-3.5 font-semibold text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/30">
+        {% if results %}
+          {% for c in results %}
+          <tr class="hover:bg-surface-container-low/50 transition-colors">
+            <td class="px-6 py-3.5 font-mono-data text-primary-container font-semibold text-xs">{{ c.niu }}</td>
+            <td class="px-6 py-3.5 font-medium">{{ c.raison or 'N/A' }}</td>
+            <td class="px-6 py-3.5 text-on-surface-variant text-xs">{{ c.secteur or '—' }}</td>
+            <td class="px-6 py-3.5 text-on-surface-variant">{{ c.cdi or (c.declarations[0].cdi if c.declarations else 'N/A') }}</td>
+            <td class="px-6 py-3.5 text-right font-mono-data">{{ '{:,.0f}'.format(c.montant_attendu or 0).replace(',', ' ') }}</td>
+            <td class="px-6 py-3.5 text-right font-mono-data {% if c.etat == 0 %}text-outline{% elif c.etat == 1 %}text-amber-700{% else %}text-primary-container{% endif %}">{{ '{:,.0f}'.format(c.montant_declare or 0).replace(',', ' ') }}</td>
+            <td class="px-6 py-3.5">
+              {% if c.etat == 3 %}<span class="inline-flex items-center gap-1 text-[11px] font-bold text-primary-container"><span class="material-symbols-outlined text-[14px]">check_circle</span>Déclarant</span>
+              {% elif c.etat == 2 %}<span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600"><span class="material-symbols-outlined text-[14px]">warning</span>Relicataire</span>
+              {% else %}<span class="inline-flex items-center gap-1 text-[11px] font-bold text-error"><span class="material-symbols-outlined text-[14px]">cancel</span>Défaillant</span>{% endif %}
+            </td>
+            <td class="px-6 py-3.5 text-center"><button type="button" class="p-1 text-on-surface-variant hover:text-primary-container rounded"><span class="material-symbols-outlined">more_vert</span></button></td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="8" class="px-6 py-12 text-center text-on-surface-variant">Aucun résultat. Utilisez la barre de recherche pour afficher des dossiers.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-outline-variant/50 text-sm text-on-surface-variant">
+    <p>Affichage de 1–{{ results|length if results else 0 }} sur {{ '{:,}'.format(filtered_count or total_count or 0).replace(',', ' ') }} enregistrements</p>
+    <div class="flex items-center gap-1">
+      <button type="button" class="px-2 py-1 hover:bg-surface-container rounded">‹</button>
+      <span class="px-3 py-1 bg-primary-container text-white rounded font-bold text-xs">1</span>
+      <button type="button" class="px-2 py-1 hover:bg-surface-container rounded">›</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom widgets -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+  <div class="bg-white rounded-xl p-6 card-shadow border border-outline-variant/60">
+    <h3 class="font-semibold mb-4">Répartition par Statut</h3>
+    <div class="space-y-4">
+      {% for label, pct, color in [('Déclarant', pct_declarants, 'bg-primary-container'), ('Relicataire', pct_relicataires, 'bg-orange-400'), ('Défaillant', pct_non_decl, 'bg-error')] %}
+      <div>
+        <div class="flex justify-between text-sm mb-1.5"><span>{{ label }}</span><span class="font-bold">{{ pct }}%</span></div>
+        <div class="h-2 bg-surface-variant rounded-full overflow-hidden"><div class="h-full {{ color }} rounded-full" style="width: {{ pct }}%"></div></div>
+      </div>
+      {% endfor %}
+      {% if pct_neants_in_decl is defined %}
+      <p class="text-xs text-outline pt-2 border-t border-outline-variant/30">Parmi les déclarants : <strong>{{ pct_neants_in_decl }}%</strong> néants (0–{{ montant_neant_max|int }} FCFA)</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/40 flex flex-col items-center justify-center text-center">
+    <span class="material-symbols-outlined text-[40px] text-primary-container/40 mb-2">cloud_sync</span>
+    <p class="text-sm text-on-surface-variant">Dernière synchronisation avec la base centrale</p>
+    <p class="text-xs font-semibold text-on-surface mt-1">Aujourd'hui à 10:45</p>
+    <button type="button" class="mt-4 text-xs font-bold text-primary-container hover:underline flex items-center gap-1">
+      <span class="material-symbols-outlined text-[16px]">refresh</span>FORCER LA MISE À JOUR
+    </button>
+  </div>
+</div>
+{% endblock %}

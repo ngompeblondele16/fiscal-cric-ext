@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Connexion - TaxStats AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#00288e",
+                    "primary-container": "#1e40af",
+                    "on-primary": "#ffffff",
+                    "secondary": "#0058be",
+                    "secondary-container": "#2170e4",
+                    "on-secondary": "#ffffff",
+                    "surface": "#f8f9fb",
+                    "on-surface": "#191c1e",
+                    "on-surface-variant": "#444653",
+                    "outline": "#757684",
+                    "outline-variant": "#c4c5d5",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6"
+            }
+          }
+        }
+      }
+</script>
+<style>
+        body {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+</style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+<!-- Login Container -->
+<div class="w-full max-w-md">
+  <!-- Header with Logo -->
+  <div class="text-center mb-12">
+    <div class="flex justify-center mb-4">
+      <div class="w-12 h-12 bg-primary-container rounded-lg flex items-center justify-center">
+        <span class="material-symbols-outlined text-on-primary text-[28px]">bar_chart</span>
+      </div>
+    </div>
+    <h1 class="text-2xl font-bold text-on-surface">TaxStats AI</h1>
+    <p class="text-sm font-semibold text-primary-container mt-1">{{ organisation_short }}</p>
+    <p class="text-xs text-on-surface-variant mt-0.5">{{ organisation_name }}</p>
+    <p class="text-sm text-on-surface-variant mt-2">Portail d'administration fiscale et d'analyse statistique avancée.</p>
+  </div>
+
+  <!-- Login Card -->
+  <div class="bg-white rounded-2xl shadow-lg p-8">
+    <h2 class="text-xl font-bold text-on-surface mb-2">Connexion</h2>
+    <p class="text-sm text-on-surface-variant mb-6">Veuillez entrer vos identifiants pour accéder à la plateforme.</p>
+
+    <form method="POST" action="{{ url_for('login') }}" class="space-y-6">
+      <!-- Email Input -->
+      <div>
+        <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wide mb-2">
+          Identifiant
+        </label>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant text-[20px]">person</span>
+          <input 
+            type="text" 
+            name="username"
+            placeholder="admin"
+            class="w-full pl-10 pr-4 py-2.5 border border-outline-variant rounded-lg text-on-surface placeholder-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent"
+            required
+          />
+        </div>
+      </div>
+
+      <!-- Password Input -->
+      <div>
+        <div class="flex justify-between items-center mb-2">
+          <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wide">
+            Mot de Passe
+          </label>
+          <a href="#" class="text-xs text-primary-container hover:underline">Oublié?</a>
+        </div>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant text-[20px]">lock</span>
+          <input 
+            type="password" 
+            name="password"
+            placeholder="••••••••"
+            class="w-full pl-10 pr-4 py-2.5 border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent"
+            required
+          />
+        </div>
+      </div>
+
+      <!-- Remember Me -->
+      <div class="flex items-center">
+        <input 
+          type="checkbox" 
+          id="remember" 
+          name="remember"
+          class="w-4 h-4 accent-primary-container rounded"
+        />
+        <label for="remember" class="ml-2 text-sm text-on-surface-variant">
+          Rester connecté pendant 30 jours
+        </label>
+      </div>
+
+      <!-- Login Button -->
+      <button 
+        type="submit"
+        class="w-full bg-primary-container text-on-primary font-bold py-2.5 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+      >
+        Se connecter
+        <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+      </button>
+    </form>
+
+    <!-- Support Link -->
+    <div class="text-center mt-6">
+      <p class="text-sm text-on-surface-variant">
+        Besoin d'aide?
+        <a href="#" class="text-primary-container font-bold hover:underline">Contacter le support technique</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="text-center mt-8 space-y-2">
+    <div class="flex justify-center gap-6 text-xs text-on-surface-variant">
+      <a href="#" class="hover:text-on-surface">Conditions d'utilisation</a>
+      <a href="#" class="hover:text-on-surface">Confidentialité</a>
+    </div>
+    <p class="text-xs text-on-surface-variant">© 2026 {{ organisation_name }} — TaxStats AI</p>
+  </div>
+</div>
+</body></html>
