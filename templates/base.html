@@ -2,7 +2,7 @@
 <html class="light" lang="fr">
 <head>
   <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
   <title>{% block title %}TaxStats AI{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet"/>
@@ -50,11 +50,24 @@
     }
   </script>
   <style>
-    body { background-color: #F3F4F6; font-family: 'Inter', sans-serif; }
+    * { box-sizing: border-box; }
+    html, body {
+      overflow-x: hidden;
+      max-width: 100vw;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #F3F4F6;
+      font-family: 'Inter', sans-serif;
+      color: #191c1e;
+      min-height: 100vh;
+    }
+    img, svg, canvas, video { max-width: 100%; display: block; }
+    button, input, select, textarea { font: inherit; }
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 10px 15px -3px rgba(0,0,0,.02); }
     .font-mono-data { font-family: 'JetBrains Mono', monospace; }
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
     .nav-active { border-left: 4px solid #2170e4; background: rgba(255,255,255,.08); color: #fff; font-weight: 600; }
@@ -63,8 +76,43 @@
     .nav-sublink { color: rgba(255,255,255,.55); font-size: 0.8125rem; }
     .nav-sublink:hover { color: #fff; background: rgba(255,255,255,.05); }
     .nav-sublink-active { color: #fff; background: rgba(255,255,255,.08); font-weight: 600; }
-    {% block extra_css %}{% endblock %}
+    .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+    .overflow-x-auto > table { min-width: 640px; }
+    /* Mobile sidebar drawer */
+    #app-sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+    }
+    #app-sidebar.is-open { transform: translateX(0); }
+    #sidebar-overlay {
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #sidebar-overlay.is-open { opacity: 1; pointer-events: auto; }
+    @media (min-width: 1024px) {
+      #app-sidebar { transform: none !important; }
+      #sidebar-overlay { display: none !important; }
+    }
+    @media (max-width: 767px) {
+      header {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+      }
+      main > div {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+      }
+      .overflow-x-auto > table {
+        min-width: 720px;
+      }
+    }
+    /* Touch-friendly tap targets */
+    @media (max-width: 1023px) {
+      .nav-link, .nav-active, .nav-sublink, .nav-sublink-active { min-height: 44px; }
+      button, a, input, select, textarea { min-height: 44px; }
+    }
   </style>
+  {% block extra_css %}{% endblock %}
 </head>
 <body class="text-on-surface">
 
@@ -80,18 +128,28 @@
 {% endmacro %}
 {% macro nav_sublink(endpoint, label) %}
 <a href="{{ url_for(endpoint) }}"
-   class="flex items-center gap-2 pl-11 pr-4 py-2 rounded-lg transition-all text-sm
+   class="flex items-center gap-2 pl-11 pr-4 py-2.5 rounded-lg transition-all text-sm
           {% if current == endpoint %}nav-sublink-active{% else %}nav-sublink{% endif %}">
   <span class="w-1 h-1 rounded-full bg-current opacity-60 shrink-0"></span>
   <span>{{ label }}</span>
 </a>
 {% endmacro %}
 
+<!-- Mobile overlay -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 lg:hidden" aria-hidden="true"></div>
+
 <!-- Sidebar -->
-<aside class="w-[280px] h-screen fixed left-0 top-0 bg-inverse-surface border-r border-outline-variant/20 flex flex-col py-6 z-50">
-  <div class="px-6 mb-8">
-    <h1 class="text-lg font-bold text-white">TaxStats AI</h1>
-    <p class="text-xs text-white/50 uppercase tracking-wider mt-0.5">{{ organisation_short }}</p>
+<aside id="app-sidebar"
+       class="w-[min(280px,85vw)] h-screen fixed left-0 top-0 bg-inverse-surface border-r border-outline-variant/20 flex flex-col py-6 z-50 lg:translate-x-0"
+       aria-label="Navigation principale">
+  <div class="px-6 mb-6 flex items-start justify-between gap-2">
+    <div>
+      <h1 class="text-lg font-bold text-white">TaxStats AI</h1>
+      <p class="text-xs text-white/50 uppercase tracking-wider mt-0.5">{{ organisation_short }}</p>
+    </div>
+    <button type="button" id="sidebar-close" class="lg:hidden p-2 -mr-2 -mt-1 text-white/70 hover:text-white rounded-lg" aria-label="Fermer le menu">
+      <span class="material-symbols-outlined">close</span>
+    </button>
   </div>
   <nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
     {{ nav_link('dashboard', 'dashboard', 'Dashboard') }}
@@ -125,17 +183,22 @@
 </aside>
 
 <!-- Header -->
-<header class="h-16 fixed top-0 right-0 w-[calc(100%-280px)] bg-surface border-b border-outline-variant flex items-center justify-between px-6 z-40">
-  <div class="flex items-center gap-4 flex-1 max-w-xl">
+<header class="h-14 sm:h-16 fixed top-0 left-0 right-0 lg:left-[280px] lg:w-auto bg-surface border-b border-outline-variant flex items-center justify-between gap-2 px-3 sm:px-6 z-30">
+  <div class="flex items-center gap-2 flex-1 min-w-0 max-w-xl">
+    <button type="button" id="sidebar-open"
+            class="lg:hidden shrink-0 p-2 -ml-1 text-on-surface-variant hover:bg-surface-container-low rounded-lg"
+            aria-label="Ouvrir le menu" aria-controls="app-sidebar" aria-expanded="false">
+      <span class="material-symbols-outlined">menu</span>
+    </button>
     {% block header_search %}
-    <div class="relative w-full">
-      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+    <div class="relative w-full min-w-0">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
       <input type="text" placeholder="{% block search_placeholder %}Rechercher...{% endblock %}"
-             class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-sm focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+             class="w-full pl-10 pr-3 py-2 bg-surface-container-low border border-outline-variant rounded-full text-sm focus:ring-2 focus:ring-primary-container focus:outline-none"/>
     </div>
     {% endblock %}
   </div>
-  <div class="flex items-center gap-4 ml-4">
+  <div class="flex items-center gap-1 sm:gap-3 shrink-0">
     <div class="relative" id="notif-root">
       <button type="button" id="notif-toggle"
               class="relative text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors"
@@ -146,7 +209,7 @@
         {% endif %}
       </button>
       <div id="notif-panel"
-           class="hidden absolute right-0 top-full mt-2 w-96 max-h-[420px] overflow-hidden bg-white rounded-xl border border-outline-variant/60 card-shadow z-50">
+           class="hidden absolute right-0 top-full mt-2 w-[min(24rem,calc(100vw-1.5rem))] max-h-[min(420px,70vh)] overflow-hidden bg-white rounded-xl border border-outline-variant/60 card-shadow z-50">
         <div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/40">
           <p class="text-sm font-bold text-on-surface">Notifications</p>
           {% if notification_count %}
@@ -155,7 +218,7 @@
           </form>
           {% endif %}
         </div>
-        <ul class="overflow-y-auto max-h-[340px] custom-scrollbar divide-y divide-outline-variant/30">
+        <ul class="overflow-y-auto max-h-[min(340px,55vh)] custom-scrollbar divide-y divide-outline-variant/30">
           {% if app_notifications %}
             {% for n in app_notifications %}
             <li class="px-4 py-3 {% if not n.is_read %}bg-primary-fixed/20{% endif %}">
@@ -165,7 +228,7 @@
                   {% if n.level == 'warning' %}warning{% elif n.level == 'error' %}error{% else %}info{% endif %}
                 </span>
                 <div class="min-w-0">
-                  <p class="text-sm text-on-surface leading-snug">{{ n.message }}</p>
+                  <p class="text-sm text-on-surface leading-snug break-words">{{ n.message }}</p>
                   <p class="text-[10px] text-on-surface-variant mt-1">
                     {{ n.created_at.strftime('%d/%m/%Y %H:%M') if n.created_at else '' }}
                     {% if n.source %} · {{ n.source }}{% endif %}
@@ -180,13 +243,13 @@
         </ul>
       </div>
     </div>
-    <div class="flex items-center gap-3 pl-4 border-l border-outline-variant">
-      <div class="text-right hidden sm:block">
+    <div class="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-outline-variant">
+      <div class="text-right hidden md:block">
         <p class="text-xs font-bold text-on-surface leading-none">Admin Fiscal</p>
         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">{{ organisation_short }}</p>
       </div>
-      <div class="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center text-on-primary text-xs font-bold">AF</div>
-      <a href="{{ url_for('logout') }}" class="text-on-surface-variant hover:text-error transition-colors p-1" title="Déconnexion">
+      <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary-container flex items-center justify-center text-on-primary text-xs font-bold shrink-0">AF</div>
+      <a href="{{ url_for('logout') }}" class="text-on-surface-variant hover:text-error transition-colors p-1.5" title="Déconnexion">
         <span class="material-symbols-outlined">logout</span>
       </a>
     </div>
@@ -194,14 +257,14 @@
 </header>
 
 <!-- Main -->
-<main class="ml-[280px] pt-16 min-h-screen">
-  <div class="max-w-[1440px] mx-auto p-6">
+<main class="lg:ml-[280px] pt-14 sm:pt-16 min-h-screen w-full">
+  <div class="max-w-[1440px] mx-auto px-3 py-4 sm:p-6">
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         {% for m in messages %}
-          <div class="mb-4 px-4 py-3 bg-primary-fixed/40 border border-primary-container/20 rounded-lg text-sm text-on-surface flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary-container text-[18px]">info</span>
-            {{ m }}
+          <div class="mb-4 px-3 sm:px-4 py-3 bg-primary-fixed/40 border border-primary-container/20 rounded-lg text-sm text-on-surface flex items-start gap-2">
+            <span class="material-symbols-outlined text-primary-container text-[18px] shrink-0 mt-0.5">info</span>
+            <span class="break-words min-w-0">{{ m }}</span>
           </div>
         {% endfor %}
       {% endif %}
@@ -209,7 +272,7 @@
     {% block content %}{% endblock %}
   </div>
   {% block footer %}
-  <footer class="text-center py-6 text-xs text-on-surface-variant border-t border-outline-variant/30 mt-8 mx-6">
+  <footer class="text-center py-6 text-xs text-on-surface-variant border-t border-outline-variant/30 mt-8 mx-3 sm:mx-6">
     © 2026 {{ organisation_name }} ({{ organisation_short }}) — Système TaxStats AI. Tous droits réservés.
   </footer>
   {% endblock %}
@@ -217,6 +280,45 @@
 
 {% block extra_js %}{% endblock %}
 <script>
+(function () {
+  var sidebar = document.getElementById('app-sidebar');
+  var overlay = document.getElementById('sidebar-overlay');
+  var openBtn = document.getElementById('sidebar-open');
+  var closeBtn = document.getElementById('sidebar-close');
+
+  function openSidebar() {
+    if (!sidebar) return;
+    sidebar.classList.add('is-open');
+    if (overlay) overlay.classList.add('is-open');
+    if (openBtn) openBtn.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    if (!sidebar) return;
+    sidebar.classList.remove('is-open');
+    if (overlay) overlay.classList.remove('is-open');
+    if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  }
+
+  if (openBtn) openBtn.addEventListener('click', openSidebar);
+  if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+  if (overlay) overlay.addEventListener('click', closeSidebar);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeSidebar();
+  });
+  // Close drawer after navigating on mobile
+  if (sidebar) {
+    sidebar.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        if (window.matchMedia('(max-width: 1023px)').matches) closeSidebar();
+      });
+    });
+  }
+  window.addEventListener('resize', function () {
+    if (window.matchMedia('(min-width: 1024px)').matches) closeSidebar();
+  });
+})();
 (function () {
   var listesToggle = document.getElementById('nav-listes-toggle');
   var listesSub = document.getElementById('nav-listes-sub');

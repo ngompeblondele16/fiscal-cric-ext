@@ -1,12 +1,12 @@
 {# Menu déroulant : Excel / PDF / PowerPoint. Variables : excel_url, pdf_url, label, pptx_url (optionnel) #}
-<div class="relative inline-block">
+<div class="relative inline-block w-full sm:w-auto">
   <details class="group">
-    <summary class="list-none px-4 py-2 bg-primary-container text-white rounded-lg text-sm font-semibold hover:opacity-90 flex items-center gap-2 cursor-pointer select-none [&::-webkit-details-marker]:hidden">
+    <summary class="list-none w-full sm:w-auto justify-center px-4 py-2.5 bg-primary-container text-white rounded-lg text-sm font-semibold hover:opacity-90 flex items-center gap-2 cursor-pointer select-none [&::-webkit-details-marker]:hidden">
       <span class="material-symbols-outlined text-[18px]">download</span>
       {{ label|default('Exporter') }}
       <span class="material-symbols-outlined text-[16px] transition-transform group-open:rotate-180">expand_more</span>
     </summary>
-    <div class="absolute right-0 mt-1 py-1 bg-white border border-outline-variant/60 rounded-lg shadow-lg z-30 min-w-[220px]" onclick="event.stopPropagation()">
+    <div class="absolute left-0 sm:left-auto sm:right-0 mt-1 py-1 bg-white border border-outline-variant/60 rounded-lg shadow-lg z-30 min-w-[220px] w-full sm:w-auto" onclick="event.stopPropagation()">
       <a href="{{ excel_url }}" target="_blank" rel="noopener" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-surface-container text-on-surface whitespace-nowrap">
         <span class="material-symbols-outlined text-[18px] text-emerald-700">table_chart</span>
         Excel (.xlsx)

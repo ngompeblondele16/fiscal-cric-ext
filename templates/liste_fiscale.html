@@ -27,44 +27,44 @@
     <table class="w-full text-sm text-left">
       <thead class="bg-surface-container-low text-[11px] uppercase tracking-wide text-on-surface-variant border-b border-outline-variant/50">
         <tr>
-          <th class="px-6 py-3.5 font-semibold w-12">N°</th>
-          <th class="px-6 py-3.5 font-semibold">NIU</th>
-          <th class="px-6 py-3.5 font-semibold">Raison sociale</th>
+          <th class="px-3 sm:px-6 py-3.5 font-semibold w-12">N°</th>
+          <th class="px-3 sm:px-6 py-3.5 font-semibold">NIU</th>
+          <th class="px-3 sm:px-6 py-3.5 font-semibold">Raison sociale</th>
           {% if show_cat %}
-          <th class="px-6 py-3.5 font-semibold">Catégorie</th>
+          <th class="px-3 sm:px-6 py-3.5 font-semibold">Catégorie</th>
           {% endif %}
           {% if show_decl %}
-          <th class="px-6 py-3.5 font-semibold text-right">Montant déclaré</th>
+          <th class="px-3 sm:px-6 py-3.5 font-semibold text-right">Montant déclaré</th>
           {% endif %}
           {% if show_paye %}
-          <th class="px-6 py-3.5 font-semibold text-right">Montant payé</th>
+          <th class="px-3 sm:px-6 py-3.5 font-semibold text-right">Montant payé</th>
           {% endif %}
-          <th class="px-6 py-3.5 font-semibold">CFLP</th>
+          <th class="px-3 sm:px-6 py-3.5 font-semibold">CFLP</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-outline-variant/30">
         {% if rows %}
           {% for row in rows %}
           <tr class="hover:bg-surface-container-low/50 transition-colors">
-            <td class="px-6 py-3.5 text-on-surface-variant">{{ loop.index }}</td>
-            <td class="px-6 py-3.5 font-mono-data text-primary-container font-semibold text-xs">{{ row.NIU }}</td>
-            <td class="px-6 py-3.5 font-medium">{{ row.Raison or '—' }}</td>
+            <td class="px-3 sm:px-6 py-3.5 text-on-surface-variant">{{ loop.index }}</td>
+            <td class="px-3 sm:px-6 py-3.5 font-mono-data text-primary-container font-semibold text-xs whitespace-nowrap">{{ row.NIU }}</td>
+            <td class="px-3 sm:px-6 py-3.5 font-medium min-w-[8rem]">{{ row.Raison or '—' }}</td>
             {% if show_cat %}
-            <td class="px-6 py-3.5">
+            <td class="px-3 sm:px-6 py-3.5">
               <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase {% if row.Statut == 'Néant' %}bg-amber-100 text-amber-800{% else %}bg-primary-fixed/40 text-primary-container{% endif %}">{{ row.Statut }}</span>
             </td>
             {% endif %}
             {% if show_decl %}
-            <td class="px-6 py-3.5 text-right font-mono-data">
+            <td class="px-3 sm:px-6 py-3.5 text-right font-mono-data whitespace-nowrap">
               {% if row['Montant déclaré'] is string %}{{ row['Montant déclaré'] }}{% else %}{{ '{:,.0f}'.format(row['Montant déclaré'] or 0).replace(',', ' ') }}{% endif %}
             </td>
             {% endif %}
             {% if show_paye %}
-            <td class="px-6 py-3.5 text-right font-mono-data text-on-surface-variant">
+            <td class="px-3 sm:px-6 py-3.5 text-right font-mono-data text-on-surface-variant whitespace-nowrap">
               {% if row['Montant payé'] == 'N/A' or row['Montant payé'] is none %}N/A{% elif row['Montant payé'] is string %}{{ row['Montant payé'] }}{% else %}{{ '{:,.0f}'.format(row['Montant payé'] or 0).replace(',', ' ') }}{% endif %}
             </td>
             {% endif %}
-            <td class="px-6 py-3.5 text-on-surface-variant text-xs">{{ row.CFLP or '—' }}</td>
+            <td class="px-3 sm:px-6 py-3.5 text-on-surface-variant text-xs">{{ row.CFLP or '—' }}</td>
           </tr>
           {% endfor %}
         {% else %}

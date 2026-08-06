@@ -3,6 +3,7 @@
 {% block search_placeholder %}Rechercher...{% endblock %}
 
 {% block extra_css %}
+<style>
 .upload-zone { border: 2px dashed #c4c5d5; transition: border-color .2s, background .2s, transform .15s; }
 .upload-zone:hover, .upload-zone.dragover { border-color: #1e40af; background: rgba(30,64,175,.04); transform: translateY(-1px); }
 .wizard-step { position: relative; padding-left: 2.75rem; padding-bottom: 1.25rem; }
@@ -22,6 +23,16 @@
 .wizard-progress > span { display: block; height: 100%; background: linear-gradient(90deg, #1e40af, #059669); transition: width .35s ease; }
 .processing-overlay { position: fixed; inset: 0; background: rgba(255,255,255,.72); backdrop-filter: blur(2px); z-index: 100; display: none; align-items: center; justify-content: center; }
 .processing-overlay.active { display: flex; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.querySelectorAll('.wizard-progress-fill[data-progress]').forEach(function (el) {
+    var value = parseInt(el.getAttribute('data-progress') || '0', 10);
+    el.style.width = value + '%';
+  });
+</script>
 {% endblock %}
 
 {% block content %}
@@ -50,7 +61,8 @@
       <span>Étape {{ wizard_step }} / {{ wizard_steps|length }}</span>
       <span>{{ ((wizard_step / wizard_steps|length) * 100)|round|int }} %</span>
     </div>
-    <div class="wizard-progress"><span style="width: {{ ((wizard_step / wizard_steps|length) * 100)|round|int }}%;"></span></div>
+    {% set progress_percent = ((wizard_step / wizard_steps|length) * 100)|round|int %}
+    <div class="wizard-progress"><span class="wizard-progress-fill" data-progress="{{ progress_percent }}"></span></div>
   </div>
 
   <div class="grid lg:grid-cols-[280px_1fr] gap-8 items-start">
@@ -83,11 +95,11 @@
 
       {# ── Étape 1 : Paramètres ── #}
       {% if wizard_step == 1 %}
-      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30">
-        <h2 class="text-xl font-bold text-on-surface">Créer un traitement</h2>
+      <div class="px-4 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-outline-variant/30">
+        <h2 class="text-lg sm:text-xl font-bold text-on-surface">Créer un traitement</h2>
         <p class="text-sm text-outline mt-2">Définissez la période fiscale et le nom du traitement. Les données précédentes seront réinitialisées.</p>
       </div>
-      <div class="p-8 max-w-lg">
+      <div class="p-4 sm:p-8 max-w-lg">
         <form method="POST" action="{{ url_for('import_create_treatment') }}" class="space-y-5">
           <div>
             <label class="block text-xs font-semibold text-on-surface-variant mb-1.5">Nom du traitement</label>
@@ -106,15 +118,15 @@
 
       {# ── Étape 2 : Fichiers déclaratifs ── #}
       {% elif wizard_step == 2 %}
-      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30">
+      <div class="px-4 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-outline-variant/30">
         <h2 class="text-xl font-bold text-on-surface">Import des déclarations</h2>
         <p class="text-sm text-outline mt-2">Importez un ou plusieurs fichiers sectoriels, puis lancez la consolidation.</p>
       </div>
-      <div class="p-8">
+      <div class="p-4 sm:p-8">
         <form method="POST" enctype="multipart/form-data" id="upload-form-p1">
           <input type="hidden" name="phase" value="1"/>
           <input type="file" name="files" id="file-input-p1" accept=".xlsx,.xls,.csv" multiple class="hidden"/>
-          <div class="upload-zone rounded-xl py-12 px-6 text-center cursor-pointer" id="drop-zone-p1">
+          <div class="upload-zone rounded-xl py-8 sm:py-12 px-4 sm:px-6 text-center cursor-pointer" id="drop-zone-p1">
             <span class="material-symbols-outlined text-[48px] text-primary-container/70 mb-3">cloud_upload</span>
             <p class="font-semibold text-on-surface">Glisser-déposer ou parcourir</p>
             <p class="text-xs text-outline mt-1">Fichiers Excel sectoriels · colonnes NIU, montant, date de création, montant reçu</p>
@@ -158,7 +170,7 @@
 
       {# ── Étape 3 : Consolidation ── #}
       {% elif wizard_step == 3 %}
-      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30 flex flex-wrap items-start justify-between gap-4">
+      <div class="px-4 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-outline-variant/30 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 class="text-xl font-bold text-on-surface">Consolidation TCD</h2>
           <p class="text-sm text-outline mt-2">Fusion des TCD · dédoublonnage par NIU · fichier sans colonne État disponible.</p>
@@ -177,7 +189,7 @@
           </a>
         </div>
       </div>
-      <div class="p-8">
+      <div class="p-4 sm:p-8">
         {% if preview_rows %}
         <div class="rounded-xl border border-outline-variant/40 overflow-hidden mb-8">
           <div class="overflow-x-auto max-h-[320px] custom-scrollbar">
@@ -217,15 +229,15 @@
 
       {# ── Étape 4 : Fichier en ligne ── #}
       {% elif wizard_step == 4 %}
-      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30">
+      <div class="px-4 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-outline-variant/30">
         <h2 class="text-xl font-bold text-on-surface">Fichier en ligne</h2>
           <p class="text-sm text-outline mt-2">Importez le fichier des contribuables attendus. Comparaison automatique (RECHERCHEV) → colonne <strong>Statut</strong> ajoutée (#N/A ou montant consolidé).</p>
       </div>
-      <div class="p-8">
+      <div class="p-4 sm:p-8">
         <form method="POST" enctype="multipart/form-data" id="upload-form-p2">
           <input type="hidden" name="phase" value="2"/>
           <input type="file" name="files" id="file-input-p2" accept=".xlsx,.xls,.csv" multiple class="hidden"/>
-          <div class="upload-zone rounded-xl py-12 px-6 text-center cursor-pointer" id="drop-zone-p2">
+          <div class="upload-zone rounded-xl py-8 sm:py-12 px-4 sm:px-6 text-center cursor-pointer" id="drop-zone-p2">
             <span class="material-symbols-outlined text-[48px] text-primary-container/70 mb-3">upload_file</span>
             <p class="font-semibold text-on-surface">Importer le fichier en ligne</p>
             <p class="text-xs text-outline mt-1">NIU obligatoire · secteur ou CFLP recommandés (montant optionnel — la RECHERCHEV utilise le consolidé)</p>
@@ -263,7 +275,7 @@
 
       {# ── Étape 5 : Table secteurs (RECHERCHEV Secteur CIME) ── #}
       {% elif wizard_step == 5 %}
-      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30 flex flex-wrap items-start justify-between gap-4">
+      <div class="px-4 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-outline-variant/30 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 class="text-xl font-bold text-on-surface">Fichier secteurs — Secteur CIME</h2>
           <p class="text-sm text-outline mt-2">RECHERCHEV sur le fichier en ligne (Statut + Secteur) → colonne <strong>Sous secteur</strong> via le fichier secteurs (NIU + Secteur CIME + Sous secteur).</p>
@@ -279,11 +291,11 @@
         </a>
         {% endif %}
       </div>
-      <div class="p-8">
+      <div class="p-4 sm:p-8">
         <form method="POST" enctype="multipart/form-data" id="upload-form-p3">
           <input type="hidden" name="phase" value="3"/>
           <input type="file" name="files" id="file-input-p3" accept=".xlsx,.xls,.csv" multiple class="hidden"/>
-          <div class="upload-zone rounded-xl py-12 px-6 text-center cursor-pointer" id="drop-zone-p3">
+          <div class="upload-zone rounded-xl py-8 sm:py-12 px-4 sm:px-6 text-center cursor-pointer" id="drop-zone-p3">
             <span class="material-symbols-outlined text-[48px] text-primary-container/70 mb-3">category</span>
             <p class="font-semibold text-on-surface">Importer le fichier secteurs</p>
             <p class="text-xs text-outline mt-1">Colonnes : NIU · Secteur CIME · Sous secteur</p>
@@ -313,7 +325,7 @@
 
       {# ── Étape 6 : Chiffre d'affaires (optionnel) ── #}
       {% elif wizard_step == 6 %}
-      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30">
+      <div class="px-4 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-outline-variant/30">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 class="text-xl font-bold text-on-surface">Chiffre d'affaires par sous-secteur</h2>
@@ -493,7 +505,7 @@
 
       {# ── Étape 7 : Résultats ── #}
       {% elif wizard_step >= 7 %}
-      <div class="px-8 pt-8 pb-6 border-b border-outline-variant/30 flex flex-wrap items-start justify-between gap-4">
+      <div class="px-4 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-outline-variant/30 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 class="text-xl font-bold text-on-surface">Résultats & export</h2>
           <p class="text-sm text-outline mt-2">TCD final par secteur · indicateurs · téléchargements.</p>
@@ -532,7 +544,7 @@
           </a>
         </div>
       </div>
-      <div class="p-8">
+      <div class="p-4 sm:p-8">
 
         {% if sector_kpi %}
         <div class="rounded-xl border border-blue-200 overflow-hidden mb-8">

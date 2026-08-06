@@ -3,13 +3,13 @@
 {% block search_placeholder %}Rechercher des statistiques...{% endblock %}
 
 {% block content %}
-<div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-  <div>
-    <h2 class="text-3xl font-bold text-on-surface tracking-tight">Tableau de bord</h2>
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-6 sm:mb-8 gap-4">
+  <div class="min-w-0">
+    <h2 class="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">Tableau de bord</h2>
     <p class="text-sm text-on-surface-variant mt-1">Surveillance en temps réel des indicateurs de performance fiscale.</p>
   </div>
-  <div class="flex gap-3">
-    <button type="button" class="flex items-center gap-2 px-4 py-2 border border-outline-variant bg-white rounded-lg text-sm font-medium hover:bg-surface-container transition-all">
+  <div class="flex flex-wrap gap-2 sm:gap-3">
+    <button type="button" class="flex items-center gap-2 px-3 sm:px-4 py-2 border border-outline-variant bg-white rounded-lg text-sm font-medium hover:bg-surface-container transition-all">
       <span class="material-symbols-outlined text-[18px]">calendar_today</span>
       Derniers 30 jours
     </button>
@@ -305,7 +305,7 @@
         {% endif %}
       </p>
     </div>
-    <div class="p-6">
+    <div class="p-4 sm:p-6">
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
         <div>
           <p class="text-sm font-medium text-on-surface-variant italic">Analyse infra annuelle</p>
@@ -329,10 +329,10 @@
       </div>
 
       {% if recettes_mensuelles.series and recettes_mensuelles.labels %}
-      <div class="flex gap-3 h-[320px]">
-        <div class="flex flex-col justify-between text-[8px] sm:text-[9px] leading-tight text-outline font-mono-data py-1 shrink-0 min-w-[10rem] sm:min-w-[11.5rem] text-right">
+      <div class="flex gap-2 sm:gap-3 h-[240px] sm:h-[320px]">
+        <div class="flex flex-col justify-between text-[7px] sm:text-[9px] leading-tight text-outline font-mono-data py-1 shrink-0 w-[4.5rem] sm:min-w-[11.5rem] sm:w-auto text-right overflow-hidden">
           {% for lbl in recettes_mensuelles.y_tick_labels|reverse %}
-          <span class="whitespace-nowrap tabular-nums">{{ lbl }}</span>
+          <span class="whitespace-nowrap tabular-nums truncate">{{ lbl }}</span>
           {% endfor %}
         </div>
         <div class="flex-1 relative border-l border-b border-outline-variant/25 bg-[#fafafa]/50 rounded-br-lg">
