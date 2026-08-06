@@ -26,15 +26,6 @@
 </style>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-  document.querySelectorAll('.wizard-progress-fill[data-progress]').forEach(function (el) {
-    var value = parseInt(el.getAttribute('data-progress') || '0', 10);
-    el.style.width = value + '%';
-  });
-</script>
-{% endblock %}
-
 {% block content %}
 <div class="max-w-6xl mx-auto">
 
