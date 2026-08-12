@@ -151,10 +151,63 @@ python app.py
 
 ## Configuration
 
-Modifiez les identifiants par défaut dans `app.py`:
-```python
-ADMIN_USER = 'admin'
-ADMIN_PASS = 'admin'
+Les identifiants et chemins se configurent via variables d'environnement (voir [.env.example](.env.example)) :
+
+| Variable | Description | Défaut |
+|----------|-------------|--------|
+| `APP_SECRET` | Clé secrète Flask | `change-me` |
+| `ADMIN_USER` / `ADMIN_PASS` | Login admin | `admin` / `admin` |
+| `DATABASE_URL` | Connexion SQLAlchemy | SQLite locale |
+| `DATA_DIR` | Racine données persistantes | répertoire projet |
+| `UPLOAD_DIR` | Fichiers en attente d'import | `{DATA_DIR}/uploads` |
+
+## Déploiement Render (production)
+
+Le dépôt inclut [render.yaml](render.yaml) pour le **déploiement automatique** à chaque push sur `main`.
+
+### Première mise en place
+
+1. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint**
+2. Connecter le dépôt GitHub `ngompeblondy-cpu/fiscal-cric-ext`
+3. Renseigner `ADMIN_USER` et `ADMIN_PASS` (variables marquées `sync: false`)
+4. Valider le déploiement
+
+### Service déjà créé manuellement
+
+Si un Web Service existe déjà sans Blueprint, mettre à jour dans le dashboard :
+
+| Paramètre | Valeur |
+|-----------|--------|
+| **Build Command** | `pip install -r requirements.txt` |
+| **Start Command** | `gunicorn -c gunicorn.conf.py app:app` |
+| **Health Check Path** | `/health` |
+| **Auto-Deploy** | Activé (branche `main`) |
+| **Disque persistant** | 1 Go monté sur `/var/data` |
+
+Variables d'environnement recommandées :
+
+```
+DATA_DIR=/var/data
+UPLOAD_DIR=/var/data/uploads
+DATABASE_URL=sqlite:////var/data/data.db
+GUNICORN_TIMEOUT=600
+APP_SECRET=<générer une clé aléatoire>
+ADMIN_USER=<votre login>
+ADMIN_PASS=<votre mot de passe>
+```
+
+### Consolidation bloquée sur « Traitement en cours… »
+
+Ce spinner disparaît quand le serveur termine le POST et redirige. S'il tourne indéfiniment :
+
+1. **Timeout Gunicorn** — le traitement Excel dépasse 30 s par défaut ; `gunicorn.conf.py` fixe 600 s
+2. **Disque persistant** — sans `/var/data`, les fichiers uploadés disparaissent au redémarrage
+3. **Logs Render** — vérifier 502/504 ou `Worker timeout` au moment du clic sur « Lancer la consolidation »
+
+Commande locale équivalente à Render :
+
+```bash
+gunicorn -c gunicorn.conf.py app:app
 ```
 
 ## Notes de développement

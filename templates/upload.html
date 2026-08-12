@@ -725,7 +725,7 @@
   <div class="bg-white rounded-2xl border border-outline-variant/50 card-shadow px-8 py-6 text-center max-w-sm mx-4">
     <span class="material-symbols-outlined text-[40px] text-primary-container animate-spin">progress_activity</span>
     <p class="font-semibold text-on-surface mt-3">Traitement en cours…</p>
-    <p class="text-xs text-outline mt-1">Consolidation ou comparaison en cours — merci de patienter.</p>
+    <p class="text-xs text-outline mt-1 overlay-hint">Consolidation ou comparaison en cours — merci de patienter.</p>
   </div>
 </div>
 {% endblock %}
@@ -753,13 +753,38 @@
   wireUpload('file-input-p4-previous', 'upload-form-p4-previous', 'drop-zone-p4-previous');
 
   const overlay = document.getElementById('processing-overlay');
+  const overlayHint = overlay ? overlay.querySelector('.overlay-hint') : null;
+  let overlayTimer = null;
+
+  function hideOverlay() {
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden', 'true');
+    if (overlayHint) {
+      overlayHint.textContent = 'Consolidation ou comparaison en cours — merci de patienter.';
+    }
+    if (overlayTimer) {
+      clearTimeout(overlayTimer);
+      overlayTimer = null;
+    }
+  }
+
   document.querySelectorAll('form[method="POST"]').forEach(form => {
     form.addEventListener('submit', () => {
       if (overlay && !form.action.includes('import/goto')) {
         overlay.classList.add('active');
         overlay.setAttribute('aria-hidden', 'false');
+        if (overlayTimer) clearTimeout(overlayTimer);
+        overlayTimer = setTimeout(() => {
+          if (overlay.classList.contains('active') && overlayHint) {
+            overlayHint.textContent =
+              'Traitement long en cours (plusieurs minutes possibles). Ne fermez pas cette page.';
+          }
+        }, 120000);
       }
     });
   });
+
+  window.addEventListener('pageshow', hideOverlay);
 </script>
 {% endblock %}

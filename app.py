@@ -1,9 +1,10 @@
 """Application Flask — factory minimale."""
 import errno
+import os
 
-from flask import Flask, flash, redirect, request, url_for
+from flask import Flask, flash, jsonify, redirect, request, url_for
 
-from config import SECRET_KEY
+from config import SECRET_KEY, UPLOAD_DIR, DATA_DIR
 from database import SessionLocal, bootstrap_app_data
 from routes import register_blueprints
 from routes.auth import inject_org, inject_notifications
@@ -13,8 +14,15 @@ def create_app():
     app = Flask(__name__)
     app.secret_key = SECRET_KEY
 
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
     bootstrap_app_data()
     register_blueprints(app)
+
+    @app.route('/health')
+    def health():
+        return jsonify({'status': 'ok'}), 200
 
     @app.errorhandler(OSError)
     def _handle_os_error(err):

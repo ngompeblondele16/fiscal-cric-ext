@@ -3,11 +3,27 @@ import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+# Données persistantes (Render : disque monté sur /var/data)
+DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
+
+
+def _normalize_database_url(url):
+    """Render PostgreSQL expose parfois postgres:// — SQLAlchemy attend postgresql://."""
+    if url.startswith('postgres://'):
+        return url.replace('postgres://', 'postgresql://', 1)
+    return url
+
+
+_default_db_path = os.path.join(DATA_DIR, 'data.db').replace('\\', '/')
+_default_db_url = f'sqlite:///{_default_db_path}'
+
 # Base relationnelle (source de vérité)
-DATABASE_URL = os.environ.get('DATABASE_URL', f'sqlite:///{os.path.join(BASE_DIR, "data.db")}')
+DATABASE_URL = _normalize_database_url(
+    os.environ.get('DATABASE_URL', _default_db_url)
+)
 
 # Dossier temporaire : fichiers en attente d'import uniquement (supprimés après traitement)
-UPLOAD_DIR = os.environ.get('UPLOAD_DIR', os.path.join(BASE_DIR, 'uploads'))
+UPLOAD_DIR = os.environ.get('UPLOAD_DIR', os.path.join(DATA_DIR, 'uploads'))
 
 # Auth (à externaliser en production)
 SECRET_KEY = os.environ.get('APP_SECRET', 'change-me')

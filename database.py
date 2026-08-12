@@ -7,7 +7,12 @@ from models import Base
 
 
 def get_engine(db_url=None):
-    return create_engine(db_url or DATABASE_URL, echo=False, future=True)
+    url = db_url or DATABASE_URL
+    kwargs = {'echo': False, 'future': True}
+    if url.startswith('sqlite'):
+        # Gunicorn multi-thread + écritures longues (consolidation).
+        kwargs['connect_args'] = {'check_same_thread': False, 'timeout': 60}
+    return create_engine(url, **kwargs)
 
 
 def _migrate_columns(engine):

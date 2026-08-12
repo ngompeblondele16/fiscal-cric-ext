@@ -1,0 +1,38 @@
+# Blueprint Render — déploiement automatique à chaque push sur main.
+# Dashboard Render → New → Blueprint → connecter ce dépôt GitHub.
+services:
+  - type: web
+    name: taxstats-ai
+    runtime: python
+    plan: starter
+    region: frankfurt
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn.conf.py app:app
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: taxstats-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: APP_SECRET
+        generateValue: true
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASS
+        sync: false
+      - key: DATA_DIR
+        value: /var/data
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: DATABASE_URL
+        value: sqlite:////var/data/data.db
+      - key: GUNICORN_TIMEOUT
+        value: "600"
+      - key: ORGANISATION_NAME
+        value: CRIC EXT
+      - key: ORGANISATION_SHORT
+        value: CRIC EXT
