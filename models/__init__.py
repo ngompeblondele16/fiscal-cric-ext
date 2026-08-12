@@ -244,3 +244,26 @@ class CaNiuLine(Base):
     ca_current = Column(Float, nullable=True)
     ca_previous = Column(Float, nullable=True)
     statut_ca = Column(String(64))
+
+
+class AdminAccount(Base):
+    """Compte administrateur unique — mot de passe hashé en base."""
+    __tablename__ = 'admin_accounts'
+    id = Column(Integer, primary_key=True)
+    username = Column(String(64), unique=True, nullable=False, index=True)
+    email = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PasswordResetToken(Base):
+    """Code OTP à usage unique pour réinitialisation du mot de passe admin."""
+    __tablename__ = 'password_reset_tokens'
+    id = Column(Integer, primary_key=True)
+    admin_id = Column(Integer, ForeignKey('admin_accounts.id'), nullable=False)
+    code_hash = Column(String(255), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    request_ip = Column(String(64))
+    created_at = Column(DateTime, default=datetime.utcnow)

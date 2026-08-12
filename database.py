@@ -55,11 +55,13 @@ SessionLocal = init_db()
 
 
 def bootstrap_app_data(session_factory=None):
-    """Tâches au démarrage (cache TCD mensuel, etc.)."""
+    """Tâches au démarrage (cache TCD mensuel, compte admin, etc.)."""
     factory = session_factory or SessionLocal
     db = factory()
     try:
         from services.consolidation import ensure_monthly_recu_cached
+        from services.admin_auth import ensure_admin_account
         ensure_monthly_recu_cached(db)
+        ensure_admin_account(db)
     finally:
         db.close()

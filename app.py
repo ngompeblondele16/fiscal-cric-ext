@@ -1,6 +1,7 @@
 """Application Flask — factory minimale."""
 import errno
 import os
+from datetime import timedelta
 
 from flask import Flask, flash, jsonify, redirect, request, url_for
 
@@ -13,6 +14,7 @@ from routes.auth import inject_org, inject_notifications
 def create_app():
     app = Flask(__name__)
     app.secret_key = SECRET_KEY
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(UPLOAD_DIR, exist_ok=True)

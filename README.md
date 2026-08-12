@@ -210,6 +210,25 @@ Commande locale équivalente à Render :
 gunicorn -c gunicorn.conf.py app:app
 ```
 
+## Mot de passe oublié (email OTP)
+
+Flux : **Email → code 6 chiffres (15 min) → nouveau mot de passe** (stocké hashé en SQLite).
+
+Variables à configurer sur Render :
+
+| Variable | Exemple (SendGrid) |
+|----------|-------------------|
+| `ADMIN_EMAIL` | `admin@votre-domaine.com` |
+| `SMTP_HOST` | `smtp.sendgrid.net` |
+| `SMTP_PORT` | `587` |
+| `SMTP_USER` | `apikey` |
+| `SMTP_PASSWORD` | clé API SendGrid |
+| `MAIL_FROM` | `noreply@votre-domaine.com` |
+
+Services SMTP compatibles : SendGrid, Brevo, Mailgun, Gmail (compte app).
+
+Sans SMTP configuré, le lien « Oublié ? » redirige vers un message invitant à contacter le support.
+
 ## Notes de développement
 
 - Utilisation de SQLite par défaut (sqlite:///data.db)

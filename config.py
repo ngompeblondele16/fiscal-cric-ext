@@ -32,3 +32,13 @@ ADMIN_PASS = os.environ.get('ADMIN_PASS', 'admin')
 
 ORGANISATION_NAME = os.environ.get('ORGANISATION_NAME', 'CRIC EXT')
 ORGANISATION_SHORT = os.environ.get('ORGANISATION_SHORT', 'CRIC EXT')
+
+# Email admin + SMTP (mot de passe oublié)
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
+MAIL_FROM = os.environ.get('MAIL_FROM', ADMIN_EMAIL or 'noreply@taxstats.local')
+SMTP_HOST = os.environ.get('SMTP_HOST', '')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USER = os.environ.get('SMTP_USER', '')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() in ('1', 'true', 'yes')
+SMTP_ENABLED = os.environ.get('SMTP_ENABLED', 'true').lower() in ('1', 'true', 'yes')
