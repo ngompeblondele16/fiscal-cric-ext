@@ -33,7 +33,6 @@
       <a href="#navigation" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">5. Menus &amp; résultats</a>
       <a href="#exports" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">6. Exports</a>
       <a href="#fichiers" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">7. Formats de fichiers</a>
-      <a href="#depannage" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">8. Dépannage</a>
     </nav>
 
     <div class="space-y-8 min-w-0">
@@ -57,16 +56,31 @@
       <section id="connexion" class="manual-section manual-card p-6">
         <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
           <span class="material-symbols-outlined text-primary-container">login</span>
-          2. Connexion et mot de passe
+          2. Se connecter
         </h2>
-        <div class="mt-4 text-sm text-on-surface-variant space-y-3 leading-relaxed">
-          <p>Connectez-vous avec l'identifiant et le mot de passe fournis par l'administrateur.</p>
-          <p><strong>Mot de passe oublié ?</strong> Sur la page de connexion, cliquez « Oublié? » puis :</p>
-          <ul class="list-disc pl-5 space-y-1">
-            <li><strong>Code de secours</strong> — saisissez le code défini par l'administrateur Render (<code class="text-xs bg-surface-container px-1 rounded">ADMIN_RECOVERY_CODE</code>) et choisissez un nouveau mot de passe (min. 8 caractères).</li>
-            <li><strong>Par email</strong> — si configuré, un code à 6 chiffres est envoyé à l'adresse administrateur.</li>
-          </ul>
-          <p>Cochez « Rester connecté pendant 30 jours » pour éviter de vous reconnecter à chaque session.</p>
+        <div class="mt-4 text-sm text-on-surface-variant space-y-4 leading-relaxed">
+          <div>
+            <p class="font-semibold text-on-surface mb-2">Connexion normale</p>
+            <ol class="list-decimal pl-5 space-y-1">
+              <li>Ouvrez la page de connexion.</li>
+              <li>Entrez votre <strong>identifiant</strong> et votre <strong>mot de passe</strong> (fournis par l'administrateur).</li>
+              <li>Cliquez sur <strong>Se connecter</strong>.</li>
+            </ol>
+            <p class="mt-2">Vous pouvez cocher « Rester connecté pendant 30 jours » pour ne pas retaper votre mot de passe à chaque fois.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-primary-fixed/40 border border-primary-container/20">
+            <p class="font-semibold text-on-surface mb-2">Vous avez oublié votre mot de passe ?</p>
+            <p class="mb-3">Pas de panique — on n'utilise pas l'email. Utilisez le <strong>mot de passe de secours</strong> :</p>
+            <ol class="list-decimal pl-5 space-y-2">
+              <li>Sur la page de connexion, cliquez sur <strong>Oublié?</strong></li>
+              <li>Dans le champ <strong>Code de secours</strong>, tapez le code que l'administrateur vous a donné<br><span class="text-xs text-outline">(exemple : <strong>CRIC-EXT-2026</strong>)</span></li>
+              <li>Choisissez un <strong>nouveau mot de passe</strong> (au moins 8 caractères) et confirmez-le</li>
+              <li>Cliquez sur <strong>Réinitialiser le mot de passe</strong></li>
+              <li>Retournez à la connexion et connectez-vous avec ce <strong>nouveau mot de passe</strong></li>
+            </ol>
+            <p class="mt-3 text-xs text-outline">Vous ne connaissez pas le code de secours ? Demandez-le à l'administrateur ou au support {{ organisation_short }}.</p>
+          </div>
         </div>
       </section>
 
@@ -203,35 +217,6 @@
             <p class="mt-1">Colonnes : <strong>CA_TAXABLE</strong>, <strong>CA_EXPORT</strong>, <strong>CA_EXONERE</strong> (+ NIU pour le rattachement).</p>
           </div>
         </div>
-      </section>
-
-      <section id="depannage" class="manual-section manual-card p-6">
-        <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary-container">build</span>
-          8. Dépannage
-        </h2>
-        <dl class="mt-4 text-sm space-y-4">
-          <div>
-            <dt class="font-semibold text-on-surface">« Traitement en cours… » qui ne s'arrête pas</dt>
-            <dd class="text-on-surface-variant mt-1">Patience sur gros fichiers (plusieurs minutes). Ne fermez pas la page. Si &gt; 10 min, contactez l'administrateur (timeout serveur).</dd>
-          </div>
-          <div>
-            <dt class="font-semibold text-on-surface">Erreur à l'import d'un fichier</dt>
-            <dd class="text-on-surface-variant mt-1">Vérifiez le format NIU, fermez le fichier dans Excel avant upload, vérifiez que les colonnes obligatoires existent.</dd>
-          </div>
-          <div>
-            <dt class="font-semibold text-on-surface">Étape suivante bloquée</dt>
-            <dd class="text-on-surface-variant mt-1">Terminez l'étape précédente (ex. consolidation avant fichier en ligne).</dd>
-          </div>
-          <div>
-            <dt class="font-semibold text-on-surface">Mot de passe oublié</dt>
-            <dd class="text-on-surface-variant mt-1">Page connexion → Oublié? → code de secours (<code class="text-xs bg-surface-container px-1 rounded">ADMIN_RECOVERY_CODE</code> sur Render).</dd>
-          </div>
-          <div>
-            <dt class="font-semibold text-on-surface">Besoin d'aide supplémentaire</dt>
-            <dd class="text-on-surface-variant mt-1">Contactez l'équipe support technique ou l'administrateur système {{ organisation_short }}.</dd>
-          </div>
-        </dl>
       </section>
 
       <div class="manual-card p-6 bg-primary-fixed/30 border-primary-container/20">
