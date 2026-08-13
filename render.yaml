@@ -24,6 +24,8 @@ services:
         sync: false
       - key: ADMIN_PASS
         sync: false
+      - key: ADMIN_RECOVERY_CODE
+        value: "CRIC-EXT-2026"
       - key: DATA_DIR
         value: /var/data
       - key: UPLOAD_DIR

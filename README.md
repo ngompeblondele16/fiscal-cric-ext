@@ -210,9 +210,28 @@ Commande locale équivalente à Render :
 gunicorn -c gunicorn.conf.py app:app
 ```
 
-## Mot de passe oublié (email OTP)
+## Mot de passe oublié
 
-Flux : **Email → code 6 chiffres (15 min) → nouveau mot de passe** (stocké hashé en SQLite).
+Deux méthodes disponibles :
+
+### 1. Code de secours (recommandé — fonctionne sans email)
+
+Sur Render, définir la variable :
+
+```
+ADMIN_RECOVERY_CODE=CRIC-EXT-2026
+```
+
+*(Changez cette valeur après la première utilisation.)*
+
+Sur la page « Mot de passe oublié » :
+1. Saisir le **code de secours**
+2. Choisir un **nouveau mot de passe** (min. 8 caractères)
+3. Se reconnecter avec le nouveau mot de passe
+
+### 2. Par email OTP (optionnel)
+
+Flux : **Email → code 6 chiffres (15 min) → nouveau mot de passe**.
 
 Variables à configurer sur Render :
 
@@ -226,8 +245,6 @@ Variables à configurer sur Render :
 | `MAIL_FROM` | `noreply@votre-domaine.com` |
 
 Services SMTP compatibles : SendGrid, Brevo, Mailgun, Gmail (compte app).
-
-Sans SMTP configuré, le lien « Oublié ? » redirige vers un message invitant à contacter le support.
 
 ## Notes de développement
 

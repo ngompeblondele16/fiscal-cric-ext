@@ -42,3 +42,6 @@ SMTP_USER = os.environ.get('SMTP_USER', '')
 SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
 SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() in ('1', 'true', 'yes')
 SMTP_ENABLED = os.environ.get('SMTP_ENABLED', 'true').lower() in ('1', 'true', 'yes')
+
+# Code de secours (reset sans email — définir sur Render)
+ADMIN_RECOVERY_CODE = os.environ.get('ADMIN_RECOVERY_CODE', '')

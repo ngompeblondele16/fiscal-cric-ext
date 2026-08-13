@@ -5,13 +5,17 @@ from datetime import datetime, timedelta
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from config import ADMIN_EMAIL, ADMIN_PASS, ADMIN_USER
+from config import ADMIN_EMAIL, ADMIN_PASS, ADMIN_RECOVERY_CODE, ADMIN_USER
 from models import AdminAccount, PasswordResetToken
 from services.email_service import send_password_reset_code
 
 OTP_LENGTH = 6
 OTP_TTL_MINUTES = 15
 MAX_RESET_REQUESTS_PER_HOUR = 3
+
+
+def recovery_code_configured():
+    return bool((ADMIN_RECOVERY_CODE or '').strip())
 
 
 def _normalize_email(value):
@@ -157,5 +161,26 @@ def reset_password_with_code(db, email_input, code, new_password):
         PasswordResetToken.id != token.id,
     ).update({'used_at': now}, synchronize_session=False)
 
+    db.commit()
+    return {'ok': True}
+
+
+def reset_password_with_recovery_code(db, recovery_code, new_password):
+    """Réinitialisation via code de secours (sans SMTP)."""
+    if not recovery_code_configured():
+        return {'ok': False, 'error': 'not_configured'}
+
+    if not new_password or len(new_password) < 8:
+        return {'ok': False, 'error': 'weak_password'}
+
+    if not secrets.compare_digest(
+        (recovery_code or '').strip(),
+        ADMIN_RECOVERY_CODE.strip(),
+    ):
+        return {'ok': False, 'error': 'invalid_recovery'}
+
+    admin = ensure_admin_account(db)
+    admin.password_hash = generate_password_hash(new_password)
+    admin.updated_at = datetime.utcnow()
     db.commit()
     return {'ok': True}
