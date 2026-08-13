@@ -233,3 +233,12 @@ def register(app):
     @login_required
     def pending_imports():
         return redirect(url_for('upload'))
+
+    @app.route('/support')
+    def support():
+        from services.treatment_wizard import WIZARD_STEPS
+        return render_template(
+            'support.html',
+            wizard_steps=WIZARD_STEPS,
+            montant_neant_max=MONTANT_NEANT_MAX,
+        )

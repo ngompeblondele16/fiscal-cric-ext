@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}Manuel d'utilisation — TaxStats AI{% endblock %}
+{% block search_placeholder %}Rechercher dans le manuel...{% endblock %}
+
+{% block extra_css %}
+<style>
+  .manual-nav a { scroll-margin-top: 5rem; }
+  .manual-section { scroll-margin-top: 5rem; }
+  .step-badge { width: 2rem; height: 2rem; border-radius: 9999px; background: #1e40af; color: #fff; font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .manual-card { background: #fff; border: 1px solid rgba(196,197,213,.6); border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <div class="mb-8">
+    <p class="text-[10px] uppercase font-bold tracking-widest text-primary-container">Support</p>
+    <h1 class="text-2xl sm:text-3xl font-bold text-on-surface mt-1">Manuel d'utilisation</h1>
+    <p class="text-sm text-on-surface-variant mt-2 max-w-2xl">
+      Guide pas à pas pour produire les statistiques fiscales de mi-parcours avec TaxStats AI — {{ organisation_short }}.
+    </p>
+  </div>
+
+  <div class="grid lg:grid-cols-[240px_1fr] gap-8 items-start">
+
+    <nav class="manual-nav manual-card p-4 lg:sticky lg:top-20 text-sm space-y-1">
+      <p class="text-[10px] uppercase font-bold text-on-surface-variant mb-3 px-2">Sommaire</p>
+      <a href="#intro" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">1. Introduction</a>
+      <a href="#connexion" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">2. Connexion</a>
+      <a href="#workflow" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">3. Assistant en 7 étapes</a>
+      <a href="#statuts" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">4. Statuts fiscaux</a>
+      <a href="#navigation" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">5. Menus &amp; résultats</a>
+      <a href="#exports" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">6. Exports</a>
+      <a href="#fichiers" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">7. Formats de fichiers</a>
+      <a href="#depannage" class="block px-2 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-primary-container">8. Dépannage</a>
+    </nav>
+
+    <div class="space-y-8 min-w-0">
+
+      <section id="intro" class="manual-section manual-card p-6">
+        <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary-container">info</span>
+          1. Introduction
+        </h2>
+        <div class="mt-4 text-sm text-on-surface-variant space-y-3 leading-relaxed">
+          <p><strong>TaxStats AI</strong> automatise la production des statistiques fiscales à partir de fichiers Excel, en reproduisant les opérations habituelles : TCD, RECHERCHEV, agrégations par secteur et chiffre d'affaires.</p>
+          <p>Le traitement se fait via un <strong>assistant guidé en 7 étapes</strong>, accessible depuis le menu <a href="{{ url_for('upload') }}" class="text-primary-container font-semibold hover:underline">Import</a>.</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Préparez vos fichiers Excel avant de commencer.</li>
+            <li>Créez un <strong>nouveau traitement</strong> pour chaque campagne statistique.</li>
+            <li>Suivez les étapes dans l'ordre — certaines étapes suivantes sont bloquées tant que la précédente n'est pas terminée.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="connexion" class="manual-section manual-card p-6">
+        <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary-container">login</span>
+          2. Connexion et mot de passe
+        </h2>
+        <div class="mt-4 text-sm text-on-surface-variant space-y-3 leading-relaxed">
+          <p>Connectez-vous avec l'identifiant et le mot de passe fournis par l'administrateur.</p>
+          <p><strong>Mot de passe oublié ?</strong> Sur la page de connexion, cliquez « Oublié? » puis :</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><strong>Code de secours</strong> — saisissez le code défini par l'administrateur Render (<code class="text-xs bg-surface-container px-1 rounded">ADMIN_RECOVERY_CODE</code>) et choisissez un nouveau mot de passe (min. 8 caractères).</li>
+            <li><strong>Par email</strong> — si configuré, un code à 6 chiffres est envoyé à l'adresse administrateur.</li>
+          </ul>
+          <p>Cochez « Rester connecté pendant 30 jours » pour éviter de vous reconnecter à chaque session.</p>
+        </div>
+      </section>
+
+      <section id="workflow" class="manual-section manual-card p-6">
+        <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary-container">route</span>
+          3. Assistant de traitement — 7 étapes
+        </h2>
+        <p class="text-sm text-on-surface-variant mt-2 mb-5">
+          Menu <a href="{{ url_for('upload') }}" class="text-primary-container font-semibold hover:underline">Import</a> — bouton « Nouveau traitement » pour recommencer à zéro.
+        </p>
+        <div class="space-y-4">
+          {% for step in wizard_steps %}
+          <div class="flex gap-4 p-4 rounded-xl bg-surface-container-low/60 border border-outline-variant/30">
+            <div class="step-badge">{{ step.num }}</div>
+            <div class="min-w-0">
+              <p class="font-semibold text-on-surface">{{ step.title }}</p>
+              <p class="text-xs text-outline mb-2">{{ step.subtitle }}</p>
+              {% if step.num == 1 %}
+              <p class="text-sm text-on-surface-variant">Indiquez le <strong>nom du traitement</strong> (ex. « Mi-parcours T1 2026 ») et la <strong>période fiscale</strong> (année). Validez pour passer à l'import.</p>
+              {% elif step.num == 2 %}
+              <p class="text-sm text-on-surface-variant">Glissez-déposez ou parcourez pour importer les <strong>fichiers sectoriels</strong> (déclarations). Plusieurs fichiers possibles. Vérifiez le nombre de lignes affiché avant de continuer.</p>
+              {% elif step.num == 3 %}
+              <p class="text-sm text-on-surface-variant">Cliquez <strong>Lancer la consolidation</strong>. L'application fusionne les fichiers et calcule un TCD par NIU. Attendez la fin du traitement (peut prendre plusieurs minutes sur gros volumes).</p>
+              {% elif step.num == 4 %}
+              <p class="text-sm text-on-surface-variant">Importez le <strong>fichier en ligne NHR</strong> (liste des contribuables attendus). Puis cliquez <strong>Lancer la comparaison RECHERCHEV</strong> pour classifier chaque NIU (défaillant, néant, relicataire, déclarant).</p>
+              {% elif step.num == 5 %}
+              <p class="text-sm text-on-surface-variant">Importez la <strong>table secteurs</strong> (NIU, Secteur CIME, Sous-secteur). Lancez le RECHERCHEV secteur. Vous pouvez ignorer cette étape si les secteurs sont déjà dans le fichier en ligne.</p>
+              {% elif step.num == 6 %}
+              <p class="text-sm text-on-surface-variant">Importez le fichier <strong>CA année N</strong> (obligatoire) et optionnellement <strong>CA année N-1</strong>. Lancez l'analyse pour obtenir l'évolution par sous-secteur. Bouton « Passer » disponible si le CA n'est pas requis.</p>
+              {% else %}
+              <p class="text-sm text-on-surface-variant">Consultez les <strong>TCD finaux</strong> (secteur, sous-secteur, relicataires, CA). Téléchargez les exports Excel ou le rapport PowerPoint. Le traitement est marqué comme terminé.</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section id="statuts" class="manual-section manual-card p-6">
+        <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary-container">category</span>
+          4. Statuts fiscaux (RECHERCHEV)
+        </h2>
+        <p class="text-sm text-on-surface-variant mt-3 mb-4">Après l'étape « En ligne », chaque contribuable reçoit un statut :</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border-collapse min-w-[480px]">
+            <thead>
+              <tr class="bg-surface-container-low text-left">
+                <th class="p-3 font-bold border-b border-outline-variant/50">Statut</th>
+                <th class="p-3 font-bold border-b border-outline-variant/50">Condition</th>
+                <th class="p-3 font-bold border-b border-outline-variant/50">Liste associée</th>
+              </tr>
+            </thead>
+            <tbody class="text-on-surface-variant">
+              <tr class="border-b border-outline-variant/30">
+                <td class="p-3 font-semibold text-error">Défaillant</td>
+                <td class="p-3">NIU absent du fichier consolidé (#N/A)</td>
+                <td class="p-3"><a href="{{ url_for('defaillants_list') }}" class="text-primary-container hover:underline">Défaillants</a></td>
+              </tr>
+              <tr class="border-b border-outline-variant/30">
+                <td class="p-3 font-semibold text-on-surface">Néant</td>
+                <td class="p-3">Montant déclaré de 0 à {{ montant_neant_max|int }} FCFA</td>
+                <td class="p-3">—</td>
+              </tr>
+              <tr class="border-b border-outline-variant/30">
+                <td class="p-3 font-semibold text-amber-700">Relicataire</td>
+                <td class="p-3">Montant &gt; {{ montant_neant_max|int }} FCFA, aucun paiement</td>
+                <td class="p-3"><a href="{{ url_for('relicataires_list') }}" class="text-primary-container hover:underline">Relicataires</a></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-green-700">Déclarant</td>
+                <td class="p-3">Montant &gt; {{ montant_neant_max|int }} FCFA et paiement effectué</td>
+                <td class="p-3"><a href="{{ url_for('declarants_list') }}" class="text-primary-container hover:underline">Déclarants</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="navigation" class="manual-section manual-card p-6">
+        <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary-container">menu</span>
+          5. Menus et consultation des résultats
+        </h2>
+        <ul class="mt-4 text-sm text-on-surface-variant space-y-3">
+          <li class="flex gap-3"><span class="material-symbols-outlined text-primary-container text-[20px] shrink-0">dashboard</span><span><strong>Dashboard</strong> — Vue d'ensemble : totaux, taux de déclaration, graphiques CFLP/secteur, recettes mensuelles, comparaison avec le traitement précédent.</span></li>
+          <li class="flex gap-3"><span class="material-symbols-outlined text-primary-container text-[20px] shrink-0">file_upload</span><span><strong>Import</strong> — Assistant de traitement (wizard) décrit ci-dessus.</span></li>
+          <li class="flex gap-3"><span class="material-symbols-outlined text-primary-container text-[20px] shrink-0">insights</span><span><strong>Résultats</strong> — Recherche d'un contribuable par NIU ou raison sociale.</span></li>
+          <li class="flex gap-3"><span class="material-symbols-outlined text-primary-container text-[20px] shrink-0">report</span><span><strong>Défaillants / Déclarants / Relicataires</strong> — Listes filtrées par statut fiscal.</span></li>
+          <li class="flex gap-3"><span class="material-symbols-outlined text-primary-container text-[20px] shrink-0">description</span><span><strong>Rapports</strong> — Exports statistiques globaux (Excel, PDF).</span></li>
+          <li class="flex gap-3"><span class="material-symbols-outlined text-primary-container text-[20px] shrink-0">notifications</span><span><strong>Cloche (header)</strong> — Notifications de fin de consolidation, comparaison, etc.</span></li>
+        </ul>
+      </section>
+
+      <section id="exports" class="manual-section manual-card p-6">
+        <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary-container">download</span>
+          6. Exports disponibles
+        </h2>
+        <p class="text-sm text-on-surface-variant mt-3 mb-4">À l'étape Résultats (Import) ou depuis Rapports :</p>
+        <ul class="text-sm text-on-surface-variant grid sm:grid-cols-2 gap-2">
+          <li class="flex items-start gap-2"><span class="material-symbols-outlined text-[18px] text-primary-container shrink-0">table</span>Fichier en ligne + Statut (Excel)</li>
+          <li class="flex items-start gap-2"><span class="material-symbols-outlined text-[18px] text-primary-container shrink-0">table</span>Fichier consolidé</li>
+          <li class="flex items-start gap-2"><span class="material-symbols-outlined text-[18px] text-primary-container shrink-0">table</span>TCD par Secteur CIME</li>
+          <li class="flex items-start gap-2"><span class="material-symbols-outlined text-[18px] text-primary-container shrink-0">table</span>TCD par Sous-secteur</li>
+          <li class="flex items-start gap-2"><span class="material-symbols-outlined text-[18px] text-primary-container shrink-0">table</span>Reliquataires par sous-secteur</li>
+          <li class="flex items-start gap-2"><span class="material-symbols-outlined text-[18px] text-primary-container shrink-0">table</span>CA par sous-secteur (N vs N-1)</li>
+          <li class="flex items-start gap-2"><span class="material-symbols-outlined text-[18px] text-primary-container shrink-0">slideshow</span>Rapport évaluation PowerPoint</li>
+          <li class="flex items-start gap-2"><span class="material-symbols-outlined text-[18px] text-primary-container shrink-0">article</span>Journal du traitement</li>
+        </ul>
+      </section>
+
+      <section id="fichiers" class="manual-section manual-card p-6">
+        <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary-container">description</span>
+          7. Formats de fichiers attendus
+        </h2>
+        <div class="mt-4 text-sm text-on-surface-variant space-y-4">
+          <div>
+            <p class="font-semibold text-on-surface">Fichiers sectoriels (étape 2)</p>
+            <p class="mt-1">Excel (.xlsx, .xls) ou CSV. Colonnes requises : <strong>NIU</strong> et <strong>montant déclaré</strong>. Format NIU : P ou M + 12 chiffres + 1 lettre.</p>
+          </div>
+          <div>
+            <p class="font-semibold text-on-surface">Fichier en ligne NHR (étape 4)</p>
+            <p class="mt-1">Liste des contribuables attendus avec colonne <strong>NIU</strong> obligatoire.</p>
+          </div>
+          <div>
+            <p class="font-semibold text-on-surface">Table secteurs (étape 5)</p>
+            <p class="mt-1">NIU, Secteur CIME, Sous-secteur.</p>
+          </div>
+          <div>
+            <p class="font-semibold text-on-surface">Fichiers CA (étape 6)</p>
+            <p class="mt-1">Colonnes : <strong>CA_TAXABLE</strong>, <strong>CA_EXPORT</strong>, <strong>CA_EXONERE</strong> (+ NIU pour le rattachement).</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="depannage" class="manual-section manual-card p-6">
+        <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary-container">build</span>
+          8. Dépannage
+        </h2>
+        <dl class="mt-4 text-sm space-y-4">
+          <div>
+            <dt class="font-semibold text-on-surface">« Traitement en cours… » qui ne s'arrête pas</dt>
+            <dd class="text-on-surface-variant mt-1">Patience sur gros fichiers (plusieurs minutes). Ne fermez pas la page. Si &gt; 10 min, contactez l'administrateur (timeout serveur).</dd>
+          </div>
+          <div>
+            <dt class="font-semibold text-on-surface">Erreur à l'import d'un fichier</dt>
+            <dd class="text-on-surface-variant mt-1">Vérifiez le format NIU, fermez le fichier dans Excel avant upload, vérifiez que les colonnes obligatoires existent.</dd>
+          </div>
+          <div>
+            <dt class="font-semibold text-on-surface">Étape suivante bloquée</dt>
+            <dd class="text-on-surface-variant mt-1">Terminez l'étape précédente (ex. consolidation avant fichier en ligne).</dd>
+          </div>
+          <div>
+            <dt class="font-semibold text-on-surface">Mot de passe oublié</dt>
+            <dd class="text-on-surface-variant mt-1">Page connexion → Oublié? → code de secours (<code class="text-xs bg-surface-container px-1 rounded">ADMIN_RECOVERY_CODE</code> sur Render).</dd>
+          </div>
+          <div>
+            <dt class="font-semibold text-on-surface">Besoin d'aide supplémentaire</dt>
+            <dd class="text-on-surface-variant mt-1">Contactez l'équipe support technique ou l'administrateur système {{ organisation_short }}.</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div class="manual-card p-6 bg-primary-fixed/30 border-primary-container/20">
+        <p class="text-sm font-semibold text-on-surface">Prêt à commencer ?</p>
+        <p class="text-sm text-on-surface-variant mt-1">Ouvrez l'assistant de traitement et suivez les 7 étapes.</p>
+        <a href="{{ url_for('upload') }}" class="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-primary-container text-on-primary text-sm font-bold rounded-xl hover:opacity-90">
+          Aller à Import
+          <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

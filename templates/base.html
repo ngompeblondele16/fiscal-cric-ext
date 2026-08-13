@@ -189,7 +189,8 @@
     <a class="flex items-center gap-3 px-4 py-3 rounded-lg nav-link text-sm" href="#">
       <span class="material-symbols-outlined">settings</span><span>Settings</span>
     </a>
-    <a class="flex items-center gap-3 px-4 py-3 rounded-lg nav-link text-sm" href="#">
+    <a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all active:scale-[0.99] text-sm {% if current == 'support' %}nav-active{% else %}nav-link{% endif %}"
+       href="{{ url_for('support') }}">
       <span class="material-symbols-outlined">help_outline</span><span>Support</span>
     </a>
   </div>
