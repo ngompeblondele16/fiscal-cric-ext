@@ -95,7 +95,7 @@
           <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wide">
             Mot de Passe
           </label>
-          <a href="{% if email_reset_enabled %}{{ url_for('forgot_password') }}{% else %}#{% endif %}" class="text-xs text-primary-container hover:underline">Oublié?</a>
+          <a href="{{ url_for('forgot_password') }}" class="text-xs text-primary-container hover:underline">Oublié?</a>
         </div>
         <div class="relative">
           <span class="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant text-[20px]">lock</span>
